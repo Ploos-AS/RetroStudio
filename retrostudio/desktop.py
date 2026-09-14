@@ -10,7 +10,7 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 from pathlib import Path
 
-from .creator import import_asset, place_asset
+from .creator import edit_entity, entity_by_id, import_asset, place_asset
 from .model import Project, Scene, load_project, save_project
 from .workspace import WORKSPACES, WorkspaceState
 
@@ -136,6 +136,15 @@ class CreatorShell:
             return
         for entity in scene.entities:
             entity_list.insert("end", f"{entity.name}  [{entity.entity_id}]")
+        entity_list.bind("<<ListboxSelect>>", lambda _event: self._on_entity_select(entity_list, scene))
+
+        current_id = self.state.selection.item_id if self.state.selection and self.state.selection.kind == "entity" else None
+        if current_id:
+            for index, entity in enumerate(scene.entities):
+                if entity.entity_id == current_id:
+                    entity_list.selection_set(index)
+                    entity_list.see(index)
+                    break
 
         self.scene_canvas = tk.Canvas(canvas_frame, background="white", highlightthickness=1)
         self.scene_canvas.pack(fill="both", expand=True)
@@ -147,11 +156,46 @@ class CreatorShell:
                 continue
             x, y = position
             label = Path(visual).name if visual else entity.name
-            self.scene_canvas.create_rectangle(x, y, x + 96, y + 48)
-            self.scene_canvas.create_text(x + 48, y + 24, text=label, width=88)
+            tag = f"entity:{entity.entity_id}"
+            self.scene_canvas.create_rectangle(x, y, x + 96, y + 48, tags=(tag,))
+            self.scene_canvas.create_text(x + 48, y + 24, text=label, width=88, tags=(tag,))
+            self.scene_canvas.tag_bind(tag, "<Button-1>", lambda _event, eid=entity.entity_id: self._select_entity_and_inspect(eid))
 
     def _render_inspector(self) -> None:
-        ttk.Label(self.workspace_frame, text="Inspector editing comes next; selection is already shared through the workspace model.").pack(anchor="nw", padx=12, pady=12)
+        scene = self._active_scene()
+        selection = self.state.selection
+        if scene is None or selection is None or selection.kind != "entity":
+            ttk.Label(self.workspace_frame, text="Select an object in Scene Composer to edit it.").pack(anchor="nw", padx=12, pady=12)
+            return
+        try:
+            entity = entity_by_id(scene, selection.item_id)
+        except ValueError:
+            ttk.Label(self.workspace_frame, text="The selected scene object no longer exists.").pack(anchor="nw", padx=12, pady=12)
+            return
+
+        position = self._entity_position(entity) or (0, 0)
+        visual = self._entity_asset(entity)
+        form = ttk.Frame(self.workspace_frame, padding=12)
+        form.pack(anchor="nw", fill="x")
+
+        ttk.Label(form, text=f"Object ID: {entity.entity_id}").grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 12))
+        ttk.Label(form, text="Name").grid(row=1, column=0, sticky="w", padx=(0, 8), pady=4)
+        self.inspector_name = tk.StringVar(value=entity.name)
+        ttk.Entry(form, textvariable=self.inspector_name, width=36).grid(row=1, column=1, sticky="ew", pady=4)
+
+        ttk.Label(form, text="X").grid(row=2, column=0, sticky="w", padx=(0, 8), pady=4)
+        self.inspector_x = tk.StringVar(value=str(position[0]))
+        ttk.Entry(form, textvariable=self.inspector_x, width=16).grid(row=2, column=1, sticky="w", pady=4)
+
+        ttk.Label(form, text="Y").grid(row=3, column=0, sticky="w", padx=(0, 8), pady=4)
+        self.inspector_y = tk.StringVar(value=str(position[1]))
+        ttk.Entry(form, textvariable=self.inspector_y, width=16).grid(row=3, column=1, sticky="w", pady=4)
+
+        ttk.Label(form, text="Visual asset").grid(row=4, column=0, sticky="w", padx=(0, 8), pady=4)
+        ttk.Label(form, text=visual or "—").grid(row=4, column=1, sticky="w", pady=4)
+
+        ttk.Button(form, text="Apply Changes", command=lambda: self.apply_inspector(entity)).grid(row=5, column=1, sticky="w", pady=(12, 0))
+        form.columnconfigure(1, weight=1)
 
     def _render_animation(self) -> None:
         self._render_placeholder()
@@ -190,6 +234,28 @@ class CreatorShell:
             self.selected_asset = str(self.asset_list.get(selection[0]))
             self.state.select("asset", self.selected_asset)
             self.status.set(f"Selected asset: {self.selected_asset}")
+
+    def _on_entity_select(self, widget: tk.Listbox, scene: Scene) -> None:
+        selection = widget.curselection()
+        if not selection:
+            return
+        entity = scene.entities[selection[0]]
+        self.state.select("entity", entity.entity_id)
+        self.status.set(f"Selected object: {entity.name}")
+
+    def _select_entity_and_inspect(self, entity_id: str) -> None:
+        self.state.select("entity", entity_id)
+        self.activate("inspector")
+
+    def apply_inspector(self, entity) -> None:
+        try:
+            edit_entity(entity, name=self.inspector_name.get(), x=self.inspector_x.get(), y=self.inspector_y.get())
+            self.save_project()
+        except (OSError, ValueError) as exc:
+            self.status.set(f"Could not apply inspector changes: {exc}")
+            return
+        self.status.set(f"Updated {entity.name}")
+        self.activate("inspector")
 
     def import_asset_ui(self) -> None:
         filename = filedialog.askopenfilename(
