@@ -13,6 +13,7 @@ from pathlib import Path
 from .animation import AnimationClip, load_clip, save_clip
 from .creator import edit_entity, entity_by_id, import_asset, place_asset
 from .model import Project, Scene, load_project, save_project
+from .preview import TargetPreview, build_quality_report, usage_percent
 from .workspace import WORKSPACES, WorkspaceState
 
 
@@ -38,6 +39,10 @@ class CreatorShell:
         self.workspace_title = tk.StringVar()
         self.selected_asset: str | None = None
         self.current_clip: AnimationClip | None = None
+        self.preview_data: TargetPreview | None = None
+        self.backend_diagnostics = []
+        self.backend_usages = []
+        self.backend_guidance = []
         self._build_menu()
         self._build_ui()
         self.activate("scene")
@@ -217,10 +222,102 @@ class CreatorShell:
             self.animation_frame_list.insert("end", f"{index:02d}  {frame.asset}  —  {timing}")
 
     def _render_target_preview(self) -> None:
-        self._render_placeholder()
+        frame = ttk.Frame(self.workspace_frame, padding=12)
+        frame.pack(fill="both", expand=True)
+        ttk.Label(frame, text="Target", font=("TkDefaultFont", 11, "bold")).grid(row=0, column=0, sticky="w", padx=(0, 8), pady=4)
+        targets = list(self.state.project.targets)
+        current = self.state.target or (targets[0] if targets else "")
+        self.preview_target = tk.StringVar(value=current)
+        chooser = ttk.Combobox(frame, textvariable=self.preview_target, values=targets, width=32)
+        chooser.grid(row=0, column=1, sticky="w", pady=4)
+        chooser.bind("<<ComboboxSelected>>", lambda _event: self.apply_preview_target())
+        ttk.Button(frame, text="Use Target", command=self.apply_preview_target).grid(row=0, column=2, sticky="w", padx=6)
+
+        asset = self.selected_asset or "No asset selected — preview applies to project-level feedback."
+        ttk.Label(frame, text="Source asset").grid(row=1, column=0, sticky="nw", padx=(0, 8), pady=4)
+        ttk.Label(frame, text=asset, wraplength=620).grid(row=1, column=1, columnspan=2, sticky="w", pady=4)
+
+        preview = self.preview_data
+        if preview is None or preview.target != current:
+            if current:
+                preview = TargetPreview(current, self.selected_asset or "", "Waiting for target backend preview data.")
+            else:
+                preview = None
+
+        if preview is None:
+            ttk.Label(frame, text="Choose or type a target profile to start target-aware preview.", wraplength=680).grid(row=2, column=0, columnspan=3, sticky="w", pady=(14, 4))
+            return
+
+        ttk.Separator(frame, orient="horizontal").grid(row=2, column=0, columnspan=3, sticky="ew", pady=12)
+        ttk.Label(frame, text=preview.summary or "Target preview ready.", wraplength=680).grid(row=3, column=0, columnspan=3, sticky="w", pady=4)
+        row = 4
+        for fact in preview.facts:
+            ttk.Label(frame, text=fact.label).grid(row=row, column=0, sticky="w", padx=(0, 8), pady=3)
+            ttk.Label(frame, text=fact.value, wraplength=620).grid(row=row, column=1, columnspan=2, sticky="w", pady=3)
+            row += 1
+        if not preview.facts:
+            ttk.Label(frame, text="The backend can add palette, resolution, memory, conversion and preview facts here without changing RetroStudio core.", wraplength=680).grid(row=row, column=0, columnspan=3, sticky="w", pady=6)
+        frame.columnconfigure(1, weight=1)
 
     def _render_quality(self) -> None:
-        self._render_placeholder()
+        target = self.state.target
+        report = build_quality_report(
+            target,
+            diagnostics=[*self.state.project.diagnostics(), *self.backend_diagnostics],
+            usages=self.backend_usages,
+            guidance=self.backend_guidance,
+        )
+        self.state.set_feedback(report.diagnostics, report.guidance)
+
+        outer = ttk.Frame(self.workspace_frame, padding=12)
+        outer.pack(fill="both", expand=True)
+        status = "Ready" if report.ok else f"Needs attention — {report.error_count} error(s)"
+        ttk.Label(outer, text=f"Target: {target or 'not selected'}", font=("TkDefaultFont", 11, "bold")).pack(anchor="w")
+        ttk.Label(outer, text=status).pack(anchor="w", pady=(2, 10))
+
+        if report.usages:
+            ttk.Label(outer, text="Resource budgets", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(4, 4))
+            for usage in report.usages:
+                line = ttk.Frame(outer)
+                line.pack(fill="x", pady=2)
+                ttk.Label(line, text=f"{usage.resource}: {usage.used}/{usage.limit} {usage.unit}", width=42).pack(side="left")
+                progress = ttk.Progressbar(line, maximum=100, value=min(100.0, usage_percent(usage)))
+                progress.pack(side="left", fill="x", expand=True)
+        else:
+            ttk.Label(outer, text="No backend resource budgets yet. They appear here as soon as the selected target reports them.", wraplength=720).pack(anchor="w", pady=4)
+
+        ttk.Label(outer, text="Quality guidance", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(14, 4))
+        if not report.diagnostics:
+            ttk.Label(outer, text="No quality problems reported.").pack(anchor="w")
+        else:
+            for diagnostic in report.diagnostics:
+                ttk.Label(outer, text=f"{diagnostic.level.upper()}: {diagnostic.message}", wraplength=720).pack(anchor="w", pady=(2, 0))
+                for item in report.guidance:
+                    if item.diagnostic_code == diagnostic.code:
+                        ttk.Label(outer, text=item.summary, wraplength=700).pack(anchor="w", padx=(16, 0))
+                        for suggestion in item.suggestions:
+                            ttk.Label(outer, text=f"• {suggestion}", wraplength=680).pack(anchor="w", padx=(28, 0))
+                        break
+
+    def apply_preview_target(self) -> None:
+        target = self.preview_target.get().strip()
+        if not target:
+            self.status.set("Choose or type a target profile first.")
+            return
+        self.state.target = target
+        self.preview_data = TargetPreview(target, self.selected_asset or "", "Waiting for target backend preview data.")
+        self.status.set(f"Target preview: {target}")
+        self.activate("target_preview")
+
+    def apply_backend_feedback(self, preview=None, diagnostics=(), usages=(), guidance=()) -> None:
+        """Receive target-specific preview/quality data from a backend adapter."""
+        if preview is not None:
+            preview.validate()
+            self.preview_data = preview
+            self.state.target = preview.target
+        self.backend_diagnostics = list(diagnostics)
+        self.backend_usages = list(usages)
+        self.backend_guidance = list(guidance)
 
     def _active_scene(self) -> Scene | None:
         project = self.state.project
@@ -391,6 +488,10 @@ class CreatorShell:
             return
         self.selected_asset = None
         self.current_clip = None
+        self.preview_data = None
+        self.backend_diagnostics = []
+        self.backend_usages = []
+        self.backend_guidance = []
         self.root.title(f"RetroStudio — {self.state.project.name}")
         self.activate("scene")
 
