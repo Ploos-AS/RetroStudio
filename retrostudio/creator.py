@@ -54,6 +54,20 @@ def scene_by_id(project: Project, scene_id: str) -> Scene:
     raise ValueError(f"unknown scene: {scene_id}")
 
 
+def entity_by_id(scene: Scene, entity_id: str) -> Entity:
+    for entity in scene.entities:
+        if entity.entity_id == entity_id:
+            return entity
+    raise ValueError(f"unknown entity: {entity_id}")
+
+
+def component_by_type(entity: Entity, component_type: str) -> Component | None:
+    for component in entity.components:
+        if component.type == component_type:
+            return component
+    return None
+
+
 def place_asset(
     scene: Scene,
     asset_path: str,
@@ -78,3 +92,30 @@ def place_asset(
     )
     scene.entities.append(entity)
     return entity
+
+
+def rename_entity(entity: Entity, name: str) -> None:
+    clean = str(name).strip()
+    if not clean:
+        raise ValueError("entity name must not be empty")
+    entity.name = clean
+
+
+def move_entity(entity: Entity, x: int, y: int) -> None:
+    transform = component_by_type(entity, "transform")
+    if transform is None:
+        transform = Component("transform", {})
+        entity.components.insert(0, transform)
+    transform.data["x"] = int(x)
+    transform.data["y"] = int(y)
+
+
+def edit_entity(entity: Entity, *, name: str, x: int, y: int) -> None:
+    """Apply the baseline creator-facing inspector fields atomically."""
+    clean = str(name).strip()
+    if not clean:
+        raise ValueError("entity name must not be empty")
+    parsed_x = int(x)
+    parsed_y = int(y)
+    rename_entity(entity, clean)
+    move_entity(entity, parsed_x, parsed_y)
