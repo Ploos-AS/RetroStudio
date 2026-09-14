@@ -1,5 +1,6 @@
 """RetroStudio platform-neutral core API."""
 
+from .animation import AnimationClip, AnimationFrame, load_clip, save_clip
 from .assets import (
     ASSET_KINDS,
     Asset,
@@ -33,6 +34,8 @@ from .workspace import (
 
 __all__ = [
     "ASSET_KINDS",
+    "AnimationClip",
+    "AnimationFrame",
     "Asset",
     "BackendDescriptor",
     "BackendResult",
@@ -59,7 +62,9 @@ __all__ = [
     "hash_bytes",
     "hash_file",
     "load_backend",
+    "load_clip",
     "load_project",
     "negotiate_backend",
+    "save_clip",
     "save_project",
 ]
