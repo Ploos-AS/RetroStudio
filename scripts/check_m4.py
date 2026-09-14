@@ -6,6 +6,7 @@ desktop = (root / "retrostudio/desktop.py").read_text(encoding="utf-8")
 creator_doc = (root / "docs/CREATOR_FIRST.md").read_text(encoding="utf-8")
 creator_ops = (root / "retrostudio/creator.py").read_text(encoding="utf-8")
 animation = (root / "retrostudio/animation.py").read_text(encoding="utf-8")
+preview = (root / "retrostudio/preview.py").read_text(encoding="utf-8")
 workspace = (root / "retrostudio/workspace.py").read_text(encoding="utf-8")
 
 required = [
@@ -35,6 +36,16 @@ assert "class AnimationClip" in animation, "animation clip model missing"
 assert "class AnimationFrame" in animation, "animation frame model missing"
 assert "duration_ms" in animation, "animation timing support missing"
 assert "loop" in animation and "fps" in animation, "animation loop/FPS support missing"
+assert "_render_target_preview" in desktop, "Target Preview panel missing"
+assert "apply_preview_target" in desktop, "target selection UI missing"
+assert "apply_backend_feedback" in desktop, "backend preview/quality handoff missing"
+assert "_render_quality" in desktop, "Quality & Budget panel missing"
+assert "Progressbar" in desktop, "resource budget visualization missing"
+assert "class TargetPreview" in preview, "target preview model missing"
+assert "class QualityReport" in preview, "quality report model missing"
+assert "build_quality_report" in preview, "quality report builder missing"
+assert "guidance_for_diagnostic" in preview, "creator guidance fallback missing"
+assert "budget_diagnostics" in preview, "resource budget diagnostics not integrated"
 assert "Listbox" in desktop, "asset/object/frame list UI missing"
 assert "visual.asset" in creator_ops, "visual asset scene component missing"
 assert "shutil.copy2" in creator_ops, "non-destructive import copy missing"
@@ -54,4 +65,6 @@ print("  PASS: Asset Library selection and scene placement wired")
 print("  PASS: Scene Composer object selection/rendering wired")
 print("  PASS: Inspector name/position editing wired")
 print("  PASS: Animation clips/frames/FPS/loop/persistence wired")
+print("  PASS: Target Preview target selection/backend facts wired")
+print("  PASS: Quality & Budget diagnostics/usages/guidance wired")
 print("  PASS: guidance and undo/redo models present")
