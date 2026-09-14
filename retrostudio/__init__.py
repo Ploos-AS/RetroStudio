@@ -12,6 +12,14 @@ from .assets import (
     hash_file,
 )
 from .model import Component, Diagnostic, Entity, Project, Scene, load_project, save_project
+from .preview import (
+    PreviewFact,
+    QualityReport,
+    TargetPreview,
+    build_quality_report,
+    guidance_for_diagnostic,
+    usage_percent,
+)
 from .target import (
     TARGET_API_VERSION,
     BackendDescriptor,
@@ -49,16 +57,21 @@ __all__ = [
     "Diagnostic",
     "EditorCommand",
     "Entity",
+    "PreviewFact",
     "Project",
+    "QualityReport",
     "ResourceUsage",
     "Scene",
     "Selection",
     "SetTargetCommand",
     "TARGET_API_VERSION",
     "TargetBackend",
+    "TargetPreview",
     "WORKSPACES",
     "WorkspaceState",
     "budget_diagnostics",
+    "build_quality_report",
+    "guidance_for_diagnostic",
     "hash_bytes",
     "hash_file",
     "load_backend",
@@ -67,4 +80,5 @@ __all__ = [
     "negotiate_backend",
     "save_clip",
     "save_project",
+    "usage_percent",
 ]
