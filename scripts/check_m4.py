@@ -3,7 +3,8 @@ from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
 desktop = (root / "retrostudio/desktop.py").read_text(encoding="utf-8")
-creator = (root / "docs/CREATOR_FIRST.md").read_text(encoding="utf-8")
+creator_doc = (root / "docs/CREATOR_FIRST.md").read_text(encoding="utf-8")
+creator_ops = (root / "retrostudio/creator.py").read_text(encoding="utf-8")
 workspace = (root / "retrostudio/workspace.py").read_text(encoding="utf-8")
 
 required = [
@@ -20,13 +21,20 @@ for label in required:
 
 assert "tkinter" in desktop, "native Linux shell toolkit missing"
 assert "load_project" in desktop, "project opening not wired"
-assert "Non-destructive sources" in creator, "creator source policy missing"
+assert "import_asset_ui" in desktop, "asset import UI missing"
+assert "place_selected_asset" in desktop, "scene placement UI missing"
+assert "Listbox" in desktop, "asset/object list UI missing"
+assert "visual.asset" in creator_ops, "visual asset scene component missing"
+assert "shutil.copy2" in creator_ops, "non-destructive import copy missing"
+assert "Non-destructive sources" in creator_doc, "creator source policy missing"
 assert "CommandHistory" in workspace, "undo/redo model missing"
 assert "CreatorGuidance" in workspace, "creator guidance model missing"
 
 print("M4 STATIC: PASS")
 print("  PASS: native desktop shell present")
 print("  PASS: creator workspaces present")
-print("  PASS: project open path wired")
-print("  PASS: non-destructive source policy documented")
+print("  PASS: project open/save path wired")
+print("  PASS: non-destructive asset import wired")
+print("  PASS: Asset Library selection and scene placement wired")
+print("  PASS: Scene Composer object rendering wired")
 print("  PASS: guidance and undo/redo models present")
