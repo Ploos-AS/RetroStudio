@@ -5,6 +5,7 @@ root = Path(__file__).resolve().parents[1]
 desktop = (root / "retrostudio/desktop.py").read_text(encoding="utf-8")
 creator_doc = (root / "docs/CREATOR_FIRST.md").read_text(encoding="utf-8")
 creator_ops = (root / "retrostudio/creator.py").read_text(encoding="utf-8")
+animation = (root / "retrostudio/animation.py").read_text(encoding="utf-8")
 workspace = (root / "retrostudio/workspace.py").read_text(encoding="utf-8")
 
 required = [
@@ -26,7 +27,15 @@ assert "place_selected_asset" in desktop, "scene placement UI missing"
 assert "apply_inspector" in desktop, "Inspector apply action missing"
 assert "_on_entity_select" in desktop, "scene object selection missing"
 assert "edit_entity" in desktop, "Inspector model edit hook missing"
-assert "Listbox" in desktop, "asset/object list UI missing"
+assert "new_animation_clip" in desktop, "animation clip creation UI missing"
+assert "add_animation_frame" in desktop, "animation frame UI missing"
+assert "apply_animation_settings" in desktop, "animation settings UI missing"
+assert "save_animation_clip" in desktop, "animation persistence UI missing"
+assert "class AnimationClip" in animation, "animation clip model missing"
+assert "class AnimationFrame" in animation, "animation frame model missing"
+assert "duration_ms" in animation, "animation timing support missing"
+assert "loop" in animation and "fps" in animation, "animation loop/FPS support missing"
+assert "Listbox" in desktop, "asset/object/frame list UI missing"
 assert "visual.asset" in creator_ops, "visual asset scene component missing"
 assert "shutil.copy2" in creator_ops, "non-destructive import copy missing"
 assert "def edit_entity" in creator_ops, "creator-facing entity edit operation missing"
@@ -44,4 +53,5 @@ print("  PASS: non-destructive asset import wired")
 print("  PASS: Asset Library selection and scene placement wired")
 print("  PASS: Scene Composer object selection/rendering wired")
 print("  PASS: Inspector name/position editing wired")
+print("  PASS: Animation clips/frames/FPS/loop/persistence wired")
 print("  PASS: guidance and undo/redo models present")
