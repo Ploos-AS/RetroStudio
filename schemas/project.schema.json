@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ploos.no/retrostudio/schemas/project.schema.json",
+  "title": "RetroStudio Project",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format_version", "name", "project_id", "scenes", "assets"],
+  "properties": {
+    "format_version": { "const": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]*$"
+    },
+    "default_scene": { "type": "string" },
+    "scenes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "assets": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    },
+    "targets": {
+      "type": "array",
+      "items": { "type": "string" },
+      "uniqueItems": true
+    }
+  }
+}
