@@ -64,12 +64,15 @@ Exit criterion: host tests prove workspace navigation, selection, creator guidan
 
 ## M5 — Visual Game Creation
 
-- Reusable visual behaviours for common mechanics: player movement, camera follow, patrols, collectibles, doors, projectiles and dialogue.
+- [x] Reusable visual behaviours foundation for player movement, camera follow, patrols, collectibles, doors and projectiles, with stable platform-neutral components, creator defaults and validation.
+- Dialogue behaviour and creator-facing behaviour editing UI.
 - Animation state and transitions.
 - Collision painting and triggers.
 - Visual event graph.
 - Prefabs/templates for common game genres.
 - Progressive scripting/runtime interface for advanced creators.
+
+Current M5 foundation stores behaviours as `behaviour.<Name>` entity components so projects remain ordinary scene data. Backends translate these authoring components into target/runtime-specific implementations; RetroStudio owns only the creator-facing semantics, defaults and validation.
 
 ## M6 — Host Preview
 
