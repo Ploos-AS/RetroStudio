@@ -51,13 +51,15 @@ Exit criterion: host tests cover the four baseline asset classes, deterministic 
 - [x] Add toolkit-neutral workspace state and selection model.
 - [x] Add creator-facing guidance alongside stable machine-readable diagnostics.
 - [x] Add undo/redo command model.
-- Native Linux desktop shell.
-- Project Browser and Asset Library views.
-- Visual Scene Composer and Inspector views.
-- Animation Workspace foundation.
-- Target Preview and Quality & Budget panels.
+- [x] Native Linux desktop shell with project opening and all creator workspaces navigable.
+- Project Browser and rich Asset Library views.
+- Visual Scene Composer and Inspector editing.
+- Animation Workspace authoring foundation.
+- Live Target Preview and Quality & Budget backend panels.
 
-Exit criterion: host tests prove workspace navigation, selection, creator guidance and undo/redo independently of the GUI toolkit; a native Linux shell can then consume this model without moving target-specific logic into RetroStudio.
+Current shell runs with `make run`. It intentionally keeps target-specific rendering and conversion outside RetroStudio.
+
+Exit criterion: host tests prove workspace navigation, selection, creator guidance and undo/redo independently of the GUI toolkit; static qualification verifies the native shell and creator workspace surface. Rich editing views are built incrementally on this stable shell.
 
 ## M5 — Visual Game Creation
 
