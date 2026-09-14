@@ -23,11 +23,13 @@ Exit criterion: host-side tests load the checked-in minimal fixture, round-trip 
 
 ## M2 — Target plugin API
 
-- Backend discovery and version negotiation.
-- Capability descriptors.
-- Target-specific validation interface.
-- Build/package/launch hooks.
-- Dummy reference backend for CI.
+- [x] Backend discovery and version negotiation.
+- [x] Capability descriptors.
+- [x] Target-specific validation interface.
+- [x] Build/package/launch hooks.
+- [x] Dummy reference backend for CI.
+
+Exit criterion: the reference backend is discovered through the public API, API-version mismatches are rejected, capabilities are reported, and validate/build/package/launch hooks are covered by host-side tests.
 
 ## M3 — Asset pipeline
 
