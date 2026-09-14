@@ -23,9 +23,15 @@ assert "tkinter" in desktop, "native Linux shell toolkit missing"
 assert "load_project" in desktop, "project opening not wired"
 assert "import_asset_ui" in desktop, "asset import UI missing"
 assert "place_selected_asset" in desktop, "scene placement UI missing"
+assert "apply_inspector" in desktop, "Inspector apply action missing"
+assert "_on_entity_select" in desktop, "scene object selection missing"
+assert "edit_entity" in desktop, "Inspector model edit hook missing"
 assert "Listbox" in desktop, "asset/object list UI missing"
 assert "visual.asset" in creator_ops, "visual asset scene component missing"
 assert "shutil.copy2" in creator_ops, "non-destructive import copy missing"
+assert "def edit_entity" in creator_ops, "creator-facing entity edit operation missing"
+assert "def move_entity" in creator_ops, "position edit operation missing"
+assert "def rename_entity" in creator_ops, "name edit operation missing"
 assert "Non-destructive sources" in creator_doc, "creator source policy missing"
 assert "CommandHistory" in workspace, "undo/redo model missing"
 assert "CreatorGuidance" in workspace, "creator guidance model missing"
@@ -36,5 +42,6 @@ print("  PASS: creator workspaces present")
 print("  PASS: project open/save path wired")
 print("  PASS: non-destructive asset import wired")
 print("  PASS: Asset Library selection and scene placement wired")
-print("  PASS: Scene Composer object rendering wired")
+print("  PASS: Scene Composer object selection/rendering wired")
+print("  PASS: Inspector name/position editing wired")
 print("  PASS: guidance and undo/redo models present")
