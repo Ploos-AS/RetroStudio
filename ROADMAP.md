@@ -33,10 +33,12 @@ Exit criterion: the reference backend is discovered through the public API, API-
 
 ## M3 — Asset pipeline
 
-- Images, palettes, tile maps and audio source assets.
-- Content hashing and build cache.
-- Target conversion requests.
-- Resource-budget diagnostics.
+- [x] Images, palettes, tile maps and audio source assets.
+- [x] Content hashing and build cache.
+- [x] Target conversion requests.
+- [x] Resource-budget diagnostics.
+
+Exit criterion: host tests cover the four baseline asset classes, deterministic SHA-256 source hashing and conversion cache keys, cache round-trips, and generic resource-budget violations without embedding platform-specific conversion logic in RetroStudio.
 
 ## M4 — Linux editor foundation
 
