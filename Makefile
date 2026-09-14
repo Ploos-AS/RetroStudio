@@ -1,6 +1,6 @@
-.PHONY: check check-m0 check-m1 check-m2 check-m3 check-m4 test run
+.PHONY: check check-m0 check-m1 check-m2 check-m3 check-m4 check-m5 test run
 
-check: check-m0 check-m1 check-m2 check-m3 check-m4
+check: check-m0 check-m1 check-m2 check-m3 check-m4 check-m5
 
 check-m0:
 	python3 scripts/check_m0.py
@@ -13,6 +13,9 @@ check-m3: test
 
 check-m4: test
 	python3 scripts/check_m4.py
+
+check-m5: test
+	python3 scripts/check_m5.py
 
 test:
 	python3 -m unittest discover -s tests -v
