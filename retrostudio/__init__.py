@@ -11,6 +11,14 @@ from .assets import (
     hash_bytes,
     hash_file,
 )
+from .behaviours import (
+    BEHAVIOUR_TYPES,
+    BehaviourDefinition,
+    add_behaviour,
+    behaviour_type,
+    entity_behaviours,
+    remove_behaviour,
+)
 from .model import Component, Diagnostic, Entity, Project, Scene, load_project, save_project
 from .preview import (
     PreviewFact,
@@ -45,8 +53,10 @@ __all__ = [
     "AnimationClip",
     "AnimationFrame",
     "Asset",
+    "BEHAVIOUR_TYPES",
     "BackendDescriptor",
     "BackendResult",
+    "BehaviourDefinition",
     "BuildArtifact",
     "Capability",
     "CommandHistory",
@@ -69,8 +79,11 @@ __all__ = [
     "TargetPreview",
     "WORKSPACES",
     "WorkspaceState",
+    "add_behaviour",
+    "behaviour_type",
     "budget_diagnostics",
     "build_quality_report",
+    "entity_behaviours",
     "guidance_for_diagnostic",
     "hash_bytes",
     "hash_file",
@@ -78,6 +91,7 @@ __all__ = [
     "load_clip",
     "load_project",
     "negotiate_backend",
+    "remove_behaviour",
     "save_clip",
     "save_project",
     "usage_percent",
