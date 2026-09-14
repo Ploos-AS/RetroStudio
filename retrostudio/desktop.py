@@ -10,7 +10,8 @@ import tkinter as tk
 from tkinter import filedialog, ttk
 from pathlib import Path
 
-from .model import Project, load_project
+from .creator import import_asset, place_asset
+from .model import Project, Scene, load_project, save_project
 from .workspace import WORKSPACES, WorkspaceState
 
 
@@ -29,11 +30,12 @@ class CreatorShell:
     def __init__(self, root: tk.Tk, project: Project | None = None) -> None:
         self.root = root
         self.root.title("RetroStudio")
-        self.root.minsize(960, 600)
-        project = project or Project("Untitled", "untitled", "", [])
+        self.root.minsize(1024, 640)
+        project = project or Project("Untitled", "untitled", "", [Scene("main", "Main")])
         self.state = WorkspaceState(project)
         self.status = tk.StringVar(value="Ready — create beautiful assets.")
         self.workspace_title = tk.StringVar()
+        self.selected_asset: str | None = None
         self._build_menu()
         self._build_ui()
         self.activate("scene")
@@ -42,6 +44,7 @@ class CreatorShell:
         menu = tk.Menu(self.root)
         file_menu = tk.Menu(menu, tearoff=False)
         file_menu.add_command(label="Open Project…", command=self.open_project)
+        file_menu.add_command(label="Save Project", command=self.save_project)
         file_menu.add_separator()
         file_menu.add_command(label="Quit", command=self.root.destroy)
         menu.add_cascade(label="File", menu=file_menu)
@@ -61,14 +64,13 @@ class CreatorShell:
                 command=lambda name=workspace: self.activate(name),
             ).pack(fill="x", pady=2)
 
-        content = ttk.Frame(outer)
-        content.pack(side="left", fill="both", expand=True)
-        ttk.Label(content, textvariable=self.workspace_title, font=("TkDefaultFont", 18, "bold")).pack(anchor="w")
-        self.subtitle = ttk.Label(content, wraplength=720)
+        self.content = ttk.Frame(outer)
+        self.content.pack(side="left", fill="both", expand=True)
+        ttk.Label(self.content, textvariable=self.workspace_title, font=("TkDefaultFont", 18, "bold")).pack(anchor="w")
+        self.subtitle = ttk.Label(self.content, wraplength=760)
         self.subtitle.pack(anchor="w", pady=(4, 12))
-
-        self.canvas = tk.Canvas(content, highlightthickness=1, background="white")
-        self.canvas.pack(fill="both", expand=True)
+        self.workspace_frame = ttk.Frame(self.content)
+        self.workspace_frame.pack(fill="both", expand=True)
 
         ttk.Label(self.root, textvariable=self.status, relief="sunken", anchor="w", padding=4).pack(fill="x", side="bottom")
 
@@ -85,9 +87,145 @@ class CreatorShell:
             "quality": "See quality and resource guidance with concrete optimization suggestions.",
         }
         self.subtitle.configure(text=descriptions[workspace])
-        self.canvas.delete("all")
-        self.canvas.create_text(24, 24, anchor="nw", text=f"{WORKSPACE_LABELS[workspace]} workspace", font=("TkDefaultFont", 13))
+        for child in self.workspace_frame.winfo_children():
+            child.destroy()
+        renderer = getattr(self, f"_render_{workspace}", self._render_placeholder)
+        renderer()
         self.status.set(f"{self.state.project.name} — {WORKSPACE_LABELS[workspace]}")
+
+    def _render_placeholder(self) -> None:
+        ttk.Label(self.workspace_frame, text=f"{self.workspace_title.get()} workspace").pack(anchor="nw", padx=12, pady=12)
+
+    def _render_project(self) -> None:
+        project = self.state.project
+        ttk.Label(self.workspace_frame, text=f"Name: {project.name}").pack(anchor="w", padx=12, pady=4)
+        ttk.Label(self.workspace_frame, text=f"Project ID: {project.project_id}").pack(anchor="w", padx=12, pady=4)
+        ttk.Label(self.workspace_frame, text=f"Scenes: {len(project.scenes)}").pack(anchor="w", padx=12, pady=4)
+        ttk.Label(self.workspace_frame, text=f"Source assets: {len(project.assets)}").pack(anchor="w", padx=12, pady=4)
+
+    def _render_assets(self) -> None:
+        toolbar = ttk.Frame(self.workspace_frame)
+        toolbar.pack(fill="x", pady=(0, 8))
+        ttk.Button(toolbar, text="Import Asset…", command=self.import_asset_ui).pack(side="left")
+        ttk.Button(toolbar, text="Place in Scene", command=self.place_selected_asset).pack(side="left", padx=6)
+
+        self.asset_list = tk.Listbox(self.workspace_frame, exportselection=False)
+        self.asset_list.pack(fill="both", expand=True)
+        for asset in sorted(self.state.project.assets):
+            self.asset_list.insert("end", asset)
+        self.asset_list.bind("<<ListboxSelect>>", self._on_asset_select)
+        if self.selected_asset in self.state.project.assets:
+            index = sorted(self.state.project.assets).index(self.selected_asset)
+            self.asset_list.selection_set(index)
+
+    def _render_scene(self) -> None:
+        split = ttk.Panedwindow(self.workspace_frame, orient="horizontal")
+        split.pack(fill="both", expand=True)
+        entities_frame = ttk.Frame(split, padding=6)
+        canvas_frame = ttk.Frame(split, padding=6)
+        split.add(entities_frame, weight=1)
+        split.add(canvas_frame, weight=4)
+
+        ttk.Label(entities_frame, text="Scene Objects", font=("TkDefaultFont", 11, "bold")).pack(anchor="w")
+        entity_list = tk.Listbox(entities_frame, exportselection=False)
+        entity_list.pack(fill="both", expand=True, pady=(6, 0))
+
+        scene = self._active_scene()
+        if scene is None:
+            ttk.Label(canvas_frame, text="This project has no scene yet.").pack(anchor="center", expand=True)
+            return
+        for entity in scene.entities:
+            entity_list.insert("end", f"{entity.name}  [{entity.entity_id}]")
+
+        self.scene_canvas = tk.Canvas(canvas_frame, background="white", highlightthickness=1)
+        self.scene_canvas.pack(fill="both", expand=True)
+        self.scene_canvas.create_text(16, 16, anchor="nw", text=scene.name, font=("TkDefaultFont", 12, "bold"))
+        for entity in scene.entities:
+            position = self._entity_position(entity)
+            visual = self._entity_asset(entity)
+            if position is None:
+                continue
+            x, y = position
+            label = Path(visual).name if visual else entity.name
+            self.scene_canvas.create_rectangle(x, y, x + 96, y + 48)
+            self.scene_canvas.create_text(x + 48, y + 24, text=label, width=88)
+
+    def _render_inspector(self) -> None:
+        ttk.Label(self.workspace_frame, text="Inspector editing comes next; selection is already shared through the workspace model.").pack(anchor="nw", padx=12, pady=12)
+
+    def _render_animation(self) -> None:
+        self._render_placeholder()
+
+    def _render_target_preview(self) -> None:
+        self._render_placeholder()
+
+    def _render_quality(self) -> None:
+        self._render_placeholder()
+
+    def _active_scene(self) -> Scene | None:
+        project = self.state.project
+        if project.default_scene:
+            for scene in project.scenes:
+                if scene.source_path == project.default_scene:
+                    return scene
+        return project.scenes[0] if project.scenes else None
+
+    @staticmethod
+    def _entity_position(entity):
+        for component in entity.components:
+            if component.type == "transform":
+                return int(component.data.get("x", 0)), int(component.data.get("y", 0))
+        return None
+
+    @staticmethod
+    def _entity_asset(entity):
+        for component in entity.components:
+            if component.type == "visual.asset":
+                return str(component.data.get("path", ""))
+        return ""
+
+    def _on_asset_select(self, _event=None) -> None:
+        selection = self.asset_list.curselection()
+        if selection:
+            self.selected_asset = str(self.asset_list.get(selection[0]))
+            self.state.select("asset", self.selected_asset)
+            self.status.set(f"Selected asset: {self.selected_asset}")
+
+    def import_asset_ui(self) -> None:
+        filename = filedialog.askopenfilename(
+            title="Import source asset",
+            filetypes=(
+                ("Creator assets", "*.png *.gif *.jpg *.jpeg *.bmp *.wav *.aiff *.mod *.xm *.s3m *.it *.tmx *.json"),
+                ("All files", "*"),
+            ),
+        )
+        if not filename:
+            return
+        try:
+            imported = import_asset(self.state.project, filename)
+            self.selected_asset = imported.project_path
+            self.save_project()
+        except (OSError, ValueError) as exc:
+            self.status.set(f"Could not import asset: {exc}")
+            return
+        self.status.set(f"Imported non-destructively: {imported.project_path}")
+        self.activate("assets")
+
+    def place_selected_asset(self) -> None:
+        if not self.selected_asset:
+            self.status.set("Select an asset first.")
+            return
+        scene = self._active_scene()
+        if scene is None:
+            scene = Scene("main", "Main", source_path="scenes/main.scene.json")
+            self.state.project.scenes.append(scene)
+            self.state.project.default_scene = scene.source_path
+        offset = len(scene.entities) * 24
+        entity = place_asset(scene, self.selected_asset, 64 + offset, 64 + offset)
+        self.state.select("entity", entity.entity_id)
+        self.save_project()
+        self.status.set(f"Placed {self.selected_asset} as {entity.entity_id}")
+        self.activate("scene")
 
     def open_project(self) -> None:
         filename = filedialog.askopenfilename(
@@ -101,8 +239,27 @@ class CreatorShell:
         except (OSError, ValueError, KeyError) as exc:
             self.status.set(f"Could not open project: {exc}")
             return
+        self.selected_asset = None
         self.root.title(f"RetroStudio — {self.state.project.name}")
         self.activate("scene")
+
+    def save_project(self) -> None:
+        project = self.state.project
+        if not project.source_path:
+            filename = filedialog.asksaveasfilename(
+                title="Save RetroStudio project",
+                defaultextension=".json",
+                filetypes=(("RetroStudio project", "*.json"),),
+            )
+            if not filename:
+                return
+            project.source_path = Path(filename).as_posix()
+        try:
+            save_project(project, project.source_path)
+        except (OSError, ValueError) as exc:
+            self.status.set(f"Could not save project: {exc}")
+            return
+        self.status.set(f"Saved {project.name}")
 
 
 def main() -> None:
