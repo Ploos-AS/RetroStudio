@@ -20,6 +20,7 @@ BEHAVIOUR_TYPES = (
     "Collectible",
     "Door",
     "Projectile",
+    "Dialogue",
 )
 
 
@@ -30,6 +31,53 @@ DEFAULTS: dict[str, dict[str, Any]] = {
     "Collectible": {"score": 1, "consume": True},
     "Door": {"starts_open": False, "requires": ""},
     "Projectile": {"speed": 220, "lifetime_ms": 1500, "direction": "facing"},
+    "Dialogue": {"speaker": "", "text": "Hello!", "trigger": "interact", "once": False},
+}
+
+
+@dataclass(frozen=True)
+class BehaviourField:
+    key: str
+    label: str
+    field_type: str = "text"
+    choices: tuple[str, ...] = ()
+    help: str = ""
+
+
+FIELDS: dict[str, tuple[BehaviourField, ...]] = {
+    "PlatformerPlayer": (
+        BehaviourField("speed", "Move speed", "number"),
+        BehaviourField("jump_speed", "Jump strength", "number"),
+        BehaviourField("gravity", "Gravity", "number"),
+    ),
+    "CameraFollow": (
+        BehaviourField("deadzone_x", "Horizontal dead zone", "number"),
+        BehaviourField("deadzone_y", "Vertical dead zone", "number"),
+    ),
+    "EnemyPatrol": (
+        BehaviourField("speed", "Patrol speed", "number"),
+        BehaviourField("distance", "Patrol distance", "number"),
+        BehaviourField("axis", "Direction", "choice", ("x", "y")),
+    ),
+    "Collectible": (
+        BehaviourField("score", "Score value", "number"),
+        BehaviourField("consume", "Disappear when collected", "boolean"),
+    ),
+    "Door": (
+        BehaviourField("starts_open", "Starts open", "boolean"),
+        BehaviourField("requires", "Required item/tag"),
+    ),
+    "Projectile": (
+        BehaviourField("speed", "Projectile speed", "number"),
+        BehaviourField("lifetime_ms", "Lifetime (ms)", "number"),
+        BehaviourField("direction", "Direction"),
+    ),
+    "Dialogue": (
+        BehaviourField("speaker", "Speaker"),
+        BehaviourField("text", "Dialogue text", "multiline"),
+        BehaviourField("trigger", "Trigger", "choice", ("interact", "touch", "automatic")),
+        BehaviourField("once", "Play once", "boolean"),
+    ),
 }
 
 
@@ -50,7 +98,7 @@ class BehaviourDefinition:
             return [Diagnostic("error", "behaviour.unknown", f"unknown behaviour: {self.behaviour_type}")]
         values = self.normalized_values()
         out: list[Diagnostic] = []
-        for key in ("speed", "jump_speed", "gravity", "distance", "score", "lifetime_ms"):
+        for key in ("speed", "jump_speed", "gravity", "distance", "score", "lifetime_ms", "deadzone_x", "deadzone_y"):
             if key in values and not isinstance(values[key], (int, float)):
                 out.append(Diagnostic("error", "behaviour.value_type", f"{key} must be numeric", key))
         if "speed" in values and values["speed"] < 0:
@@ -59,6 +107,11 @@ class BehaviourDefinition:
             out.append(Diagnostic("error", "behaviour.axis_invalid", "patrol axis must be x or y", "axis"))
         if self.behaviour_type == "Projectile" and values["lifetime_ms"] <= 0:
             out.append(Diagnostic("error", "behaviour.lifetime_invalid", "projectile lifetime must be greater than zero", "lifetime_ms"))
+        if self.behaviour_type == "Dialogue":
+            if not str(values["text"]).strip():
+                out.append(Diagnostic("error", "behaviour.dialogue_text_empty", "dialogue text must not be empty", "text"))
+            if values["trigger"] not in ("interact", "touch", "automatic"):
+                out.append(Diagnostic("error", "behaviour.dialogue_trigger_invalid", "dialogue trigger is invalid", "trigger"))
         return out
 
     def to_component(self) -> Component:
@@ -66,6 +119,12 @@ class BehaviourDefinition:
         if diagnostics:
             raise ValueError(diagnostics[0].message)
         return Component(f"behaviour.{self.behaviour_type}", self.normalized_values())
+
+
+def behaviour_fields(behaviour: str) -> tuple[BehaviourField, ...]:
+    if behaviour not in FIELDS:
+        raise ValueError(f"unknown behaviour: {behaviour}")
+    return FIELDS[behaviour]
 
 
 def behaviour_type(component: Component) -> str | None:
@@ -88,6 +147,15 @@ def add_behaviour(entity: Entity, definition: BehaviourDefinition) -> Component:
     component = definition.to_component()
     entity.components.append(component)
     return component
+
+
+def update_behaviour(entity: Entity, definition: BehaviourDefinition) -> Component:
+    replacement = definition.to_component()
+    for index, component in enumerate(entity.components):
+        if behaviour_type(component) == definition.behaviour_type:
+            entity.components[index] = replacement
+            return replacement
+    raise ValueError(f"entity does not have behaviour: {definition.behaviour_type}")
 
 
 def remove_behaviour(entity: Entity, behaviour: str) -> bool:
