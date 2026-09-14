@@ -56,11 +56,11 @@ Exit criterion: host tests cover the four baseline asset classes, deterministic 
 - [x] Functional Scene Composer foundation with asset placement and visual scene-object layout.
 - [x] Inspector editing for selected scene-object name and position with persistence.
 - [x] Animation Workspace foundation with clips, frames, FPS, loop, per-frame timing overrides and JSON persistence.
-- Live Target Preview and Quality & Budget backend panels.
+- [x] Target Preview and Quality & Budget panels with target selection, backend facts, diagnostics, resource budgets and creator-facing guidance.
 
-Current shell runs with `make run`. Creators can import source assets, place and inspect scene objects, then build reusable animation clips from selected source assets. Clips keep project asset references, support clip FPS, looping and optional frame-specific timing, and persist under `animations/*.animation.json`. Target-specific rendering and conversion remain outside RetroStudio.
+Current shell runs with `make run`. Creators can import source assets, compose scenes, inspect objects and build reusable animation clips. Target Preview accepts project target profiles and selected assets, while backend adapters can inject target-specific preview facts without adding platform assumptions to RetroStudio. Quality & Budget combines project/backend diagnostics, resource usage and backend-specific or generic creator guidance into actionable feedback.
 
-Exit criterion: host tests prove workspace navigation, selection, creator guidance, non-destructive asset import, scene placement, Inspector editing, animation model/persistence and undo/redo independently of the GUI toolkit; static qualification verifies the native shell and creator workspace surface. Rich editing views are built incrementally on this stable shell.
+Exit criterion: host tests prove workspace navigation, selection, creator guidance, non-destructive asset import, scene placement, Inspector editing, animation model/persistence, target preview/quality reporting and undo/redo independently of the GUI toolkit; static qualification verifies the native shell and full M4 creator workspace surface.
 
 ## M5 — Visual Game Creation
 
