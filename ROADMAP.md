@@ -13,11 +13,13 @@ Exit criterion: `make check` validates the M0 repository and sample manifest wit
 
 ## M1 — Core project model
 
-- Parse/load/save project manifests.
-- Stable diagnostics model.
-- Scene/entity/component data model.
-- Deterministic IDs and paths.
-- Unit tests and round-trip tests.
+- [x] Parse/load/save project manifests.
+- [x] Stable diagnostics model.
+- [x] Scene/entity/component data model.
+- [x] Deterministic project-relative paths and IDs.
+- [x] Unit tests and round-trip tests.
+
+Exit criterion: host-side tests load the checked-in minimal fixture, round-trip a project with entities/components, reject escaping paths, and report duplicate IDs deterministically.
 
 ## M2 — Target plugin API
 
