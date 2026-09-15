@@ -22,8 +22,13 @@ class SceneCollisionMount:
     def mount(self) -> None:
         self.toolbar.pack(fill="x", pady=(0, 6))
         self.controller.bind()
+        self.canvas = self.controller.canvas
+        self.canvas.bind("<ButtonPress-1>", self._before_pointer_down, add="+")
         self.controller.render()
         self._tool_changed(self.state)
+
+    def _before_pointer_down(self, _event) -> None:
+        self.sync_before_gesture()
 
     def _tool_changed(self, state: CollisionToolState) -> None:
         if self.on_status is None:
