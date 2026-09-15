@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from .collision_editor import overlays_for_entity, paint_box, resize_box
+import math
+
+from .collision_editor import overlays_for_entity, paint_box, resize_box, resize_circle
 
 
 class SceneCollisionLayer:
@@ -27,6 +29,7 @@ class SceneCollisionLayer:
             if overlay.shape == "circle":
                 r = overlay.radius
                 self.canvas.create_oval(overlay.x - r, overlay.y - r, overlay.x + r, overlay.y + r, dash=dash, width=2, tags=tags)
+                self._handle(overlay.x + r, overlay.y, overlay.kind, "radius")
             else:
                 left, top = overlay.x, overlay.y
                 right, bottom = left + overlay.width, top + overlay.height
@@ -37,50 +40,67 @@ class SceneCollisionLayer:
 
     def _handle(self, x: float, y: float, kind: str, corner: str) -> None:
         size = self.HANDLE_SIZE
-        self.canvas.create_rectangle(
-            x - size,
-            y - size,
-            x + size,
-            y + size,
-            width=1,
-            tags=(self.TAG, self.HANDLE_TAG, f"collision-handle:{kind}:{corner}"),
-        )
+        self.canvas.create_rectangle(x - size, y - size, x + size, y + size, width=1, tags=(self.TAG, self.HANDLE_TAG, f"collision-handle:{kind}:{corner}"))
 
     def handle_at(self, x: float, y: float):
-        """Return (kind, corner) for a box resize handle at the scene point."""
         point_x, point_y = float(x), float(y)
         size = self.HANDLE_SIZE
         for overlay in overlays_for_entity(self.entity):
-            if overlay.shape != "box":
-                continue
-            corners = (("nw", overlay.x, overlay.y), ("se", overlay.x + overlay.width, overlay.y + overlay.height))
-            for corner, handle_x, handle_y in corners:
+            if overlay.shape == "circle":
+                handles = (("radius", overlay.x + overlay.radius, overlay.y),)
+            else:
+                handles = (("nw", overlay.x, overlay.y), ("se", overlay.x + overlay.width, overlay.y + overlay.height))
+            for corner, handle_x, handle_y in handles:
                 if abs(point_x - handle_x) <= size and abs(point_y - handle_y) <= size:
                     return overlay.kind, corner
         return None
 
     def begin_resize(self, kind: str, corner: str) -> None:
         for overlay in overlays_for_entity(self.entity):
-            if overlay.kind == kind and overlay.shape == "box":
+            if overlay.kind != kind:
+                continue
+            if overlay.shape == "circle" and corner == "radius":
+                self._resize = (kind, "circle", overlay.x, overlay.y, overlay.radius)
+            elif overlay.shape == "box" and corner in ("nw", "se"):
                 self._resize = (kind, corner, overlay.x, overlay.y, overlay.x + overlay.width, overlay.y + overlay.height)
-                self.canvas.delete(self.PREVIEW_TAG)
-                return
+            else:
+                continue
+            self.canvas.delete(self.PREVIEW_TAG)
+            return
 
     def update_resize(self, x: float, y: float) -> None:
-        bounds = self._resize_bounds(float(x), float(y))
-        if bounds is None:
+        if self._resize is None:
             return
-        left, top, right, bottom = bounds
         self.canvas.delete(self.PREVIEW_TAG)
-        self.canvas.create_rectangle(left, top, right, bottom, dash=(4, 3), width=2, tags=(self.PREVIEW_TAG,))
+        if self._resize[1] == "circle":
+            _kind, _shape, center_x, center_y, _radius = self._resize
+            radius = math.hypot(float(x) - center_x, float(y) - center_y)
+            self.canvas.create_oval(center_x - radius, center_y - radius, center_x + radius, center_y + radius, dash=(4, 3), width=2, tags=(self.PREVIEW_TAG,))
+            return
+        bounds = self._resize_bounds(float(x), float(y))
+        if bounds is not None:
+            left, top, right, bottom = bounds
+            self.canvas.create_rectangle(left, top, right, bottom, dash=(4, 3), width=2, tags=(self.PREVIEW_TAG,))
 
     def finish_resize(self, x: float, y: float) -> bool:
-        bounds = self._resize_bounds(float(x), float(y))
-        if bounds is None or self._resize is None:
+        if self._resize is None:
             return False
+        if self._resize[1] == "circle":
+            kind, _shape, center_x, center_y, _old_radius = self._resize
+            self._resize = None
+            self.canvas.delete(self.PREVIEW_TAG)
+            radius = math.hypot(float(x) - center_x, float(y) - center_y)
+            try:
+                resize_circle(self.entity, kind, center_x, center_y, radius)
+            except ValueError:
+                return False
+            return True
+        bounds = self._resize_bounds(float(x), float(y))
         kind = self._resize[0]
         self._resize = None
         self.canvas.delete(self.PREVIEW_TAG)
+        if bounds is None:
+            return False
         left, top, right, bottom = bounds
         if right <= left or bottom <= top:
             return False
@@ -88,7 +108,7 @@ class SceneCollisionLayer:
         return True
 
     def _resize_bounds(self, x: float, y: float):
-        if self._resize is None:
+        if self._resize is None or self._resize[1] == "circle":
             return None
         _kind, corner, left, top, right, bottom = self._resize
         if corner == "nw":
