@@ -1,6 +1,15 @@
 """RetroStudio platform-neutral core API."""
 
 from .animation import AnimationClip, AnimationFrame, load_clip, save_clip
+from .animation_state import (
+    CONDITION_OPERATORS,
+    AnimationCondition,
+    AnimationState,
+    AnimationStateMachine,
+    AnimationTransition,
+    load_state_machine,
+    save_state_machine,
+)
 from .assets import (
     ASSET_KINDS,
     Asset,
@@ -51,13 +60,18 @@ from .workspace import (
 __all__ = [
     "ASSET_KINDS",
     "AnimationClip",
+    "AnimationCondition",
     "AnimationFrame",
+    "AnimationState",
+    "AnimationStateMachine",
+    "AnimationTransition",
     "Asset",
     "BEHAVIOUR_TYPES",
     "BackendDescriptor",
     "BackendResult",
     "BehaviourDefinition",
     "BuildArtifact",
+    "CONDITION_OPERATORS",
     "Capability",
     "CommandHistory",
     "Component",
@@ -90,9 +104,11 @@ __all__ = [
     "load_backend",
     "load_clip",
     "load_project",
+    "load_state_machine",
     "negotiate_backend",
     "remove_behaviour",
     "save_clip",
     "save_project",
+    "save_state_machine",
     "usage_percent",
 ]
