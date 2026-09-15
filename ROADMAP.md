@@ -1,55 +1,43 @@
-# RetroStudio roadmap
+# RetroStudio Roadmap
 
 ## Product north star
 
-RetroStudio is creator-first. Artists and game designers should be able to focus on beautiful source assets, animation, levels, music and game design while the studio handles classic-hardware conversion, optimization and build complexity. Source assets remain non-destructive and target backends provide hardware-specific quality guidance.
+RetroStudio is a creator-first game studio for producing high-quality games for retro platforms. Artists, designers and other creators should be able to focus on beautiful assets, animation, level design and game feel while RetroStudio handles platform constraints, conversion, validation and deterministic builds.
 
-RetroStudio is not tied to one editor. The long-term product has two first-class authoring frontends over the same platform-neutral core and project model:
+RetroStudio supports two first-class authoring paths over the same platform-neutral project model and toolchain:
 
-1. **RetroStudio Native Editor** — a Linux-first, retro-focused visual creator environment designed for artists, designers and asset makers.
-2. **Godot integration** — an addon/export bridge for creators who prefer Godot's mature editor and workflows.
+1. **RetroStudio Native Editor** — a Linux-first, retro-specific creator workspace.
+2. **Godot integration** — a Godot 4 authoring frontend/export bridge for creators who prefer Godot.
 
-Both frontends must feed the same RetroStudio project/IR, compiler, asset pipeline and target backends. Target games do not require the Godot runtime. A Godot fork is explicitly deferred unless future editor requirements cannot reasonably be delivered through the addon/integration boundary.
+Godot is an authoring frontend, not the runtime shipped to classic machines. Target builds use small/native runtimes appropriate to each platform. The canonical project/IR belongs to RetroStudio, and builds must remain deterministic and headless-capable.
 
 ## M0 — Foundation
 
-- [x] Define platform-neutral core responsibilities.
-- [x] Define target/backend boundary.
-- [x] Version the project manifest from day one.
-- [x] Add minimal sample project.
-- [x] Add host-side repository/schema checks.
-- [x] Document AmiStudio as first consumer and AtariStudio as portability proof.
-
-Exit criterion: `make check` validates the M0 repository and sample manifest without any retro target SDK.
+- [x] Establish repository structure, licensing and basic documentation.
+- [x] Define platform-neutral architecture and dependency invariant.
+- [x] Add host-side static qualification.
+- [x] Add GitHub Actions CI.
 
 ## M1 — Core project model
 
-- [x] Parse/load/save project manifests.
-- [x] Stable diagnostics model.
-- [x] Scene/entity/component data model.
-- [x] Deterministic project-relative paths and IDs.
-- [x] Unit tests and round-trip tests.
-
-Exit criterion: host-side tests load the checked-in minimal fixture, round-trip a project with entities/components, reject escaping paths, and report duplicate IDs deterministically.
+- [x] Define project, scene, entity and component model.
+- [x] JSON loading/saving and validation.
+- [x] Deterministic project serialization.
+- [x] Minimal checked-in project fixture.
 
 ## M2 — Target plugin API
 
-- [x] Backend discovery and version negotiation.
-- [x] Capability descriptors.
-- [x] Target-specific validation interface.
-- [x] Build/package/launch hooks.
-- [x] Dummy reference backend for CI.
-
-Exit criterion: the reference backend is discovered through the public API, API-version mismatches are rejected, capabilities are reported, and validate/build/package/launch hooks are covered by host-side tests.
+- [x] Define stable target/backend interface.
+- [x] Capability and diagnostic contracts.
+- [x] Dummy/reference backend.
+- [x] Keep RetroStudio independent of product frontends/backends.
 
 ## M3 — Asset pipeline
 
-- [x] Images, palettes, tile maps and audio source assets.
-- [x] Content hashing and build cache.
-- [x] Target conversion requests.
-- [x] Resource-budget diagnostics.
-
-Exit criterion: host tests cover the four baseline asset classes, deterministic SHA-256 source hashing and conversion cache keys, cache round-trips, and generic resource-budget violations without embedding platform-specific conversion logic in RetroStudio.
+- [x] Platform-neutral asset metadata and registry.
+- [x] Deterministic asset conversion/cache foundation.
+- [x] Target-aware diagnostics and budgets.
+- [x] Preserve creator source assets non-destructively.
 
 ## M4 — Creator Workspace Foundation
 
@@ -77,12 +65,13 @@ Exit criterion: host tests prove workspace navigation, selection, creator guidan
 - [x] Collision/trigger data-model foundation with platform-neutral box/circle shapes, collider layers, solid flags, trigger events/filters and structured validation.
 - [x] Collision editor/overlay foundation with toolkit-neutral scene-space overlays, box/circle collider editing, box trigger editing, removal operations and a reusable creator-facing Tk panel.
 - [x] Direct-manipulation collision geometry foundation: normalized canvas drags, entity-local conversion, scene-space resize geometry and collider/trigger painting operations with host tests.
-- Scene Composer mouse interaction, visible paint previews and resize handles.
+- [x] Scene Composer collision mouse interaction with visible paint previews, mounted box resize handles, metadata-preserving resize gestures and headless qualification.
+- [x] Consolidate collision canvas interaction on the mounted Scene Composer layer; remove the obsolete parallel Tk collision-canvas implementation.
 - Visual event graph.
 - Prefabs/templates for common game genres.
 - Progressive scripting/runtime interface for advanced creators.
 
-Current M5 foundation stores behaviours as `behaviour.<Name>` entity components so projects remain ordinary scene data. Backends translate these authoring components into target/runtime-specific implementations; RetroStudio owns only the creator-facing semantics, defaults and validation. The behaviour editor is schema-driven (`number`, `boolean`, `choice`, text and multiline fields), so new behaviours can expose creator-friendly controls without hand-written raw component editors. Animation state machines remain platform-neutral: creator states reference reusable clip IDs and transitions use named parameters and simple conditions that backends can translate later. Collision authoring follows the same rule: canonical collider/trigger components describe creator intent while each target backend remains responsible for an efficient native implementation. Toolkit-neutral overlay and painting geometry keeps collision visualization and direct manipulation reusable by the native Scene Composer and future frontends instead of embedding project semantics in Tk canvas code.
+Current M5 foundation stores behaviours as `behaviour.<Name>` entity components so projects remain ordinary scene data. Backends translate these authoring components into target/runtime-specific implementations; RetroStudio owns only the creator-facing semantics, defaults and validation. The behaviour editor is schema-driven (`number`, `boolean`, `choice`, text and multiline fields), so new behaviours can expose creator-friendly controls without hand-written raw component editors. Animation state machines remain platform-neutral: creator states reference reusable clip IDs and transitions use named parameters and simple conditions that backends can translate later. Collision authoring follows the same rule: canonical collider/trigger components describe creator intent while each target backend remains responsible for an efficient native implementation. Toolkit-neutral overlay and painting geometry keeps collision visualization and direct manipulation reusable by the native Scene Composer and future frontends instead of embedding project semantics in Tk canvas code. The native editor now has one mounted collision interaction path, avoiding divergent duplicate canvas implementations.
 
 ## M6 — Host Preview
 
@@ -148,32 +137,31 @@ Exit criterion: the same checked-in project/IR fixture can be produced/consumed 
 
 Exit criterion: one reference game can be authored through Godot, exported to RetroStudio IR and built by the normal headless pipeline with deterministic output.
 
-## M13 — Native Editor as first-class frontend
+## M13 — Native Editor as a first-class frontend
 
-- Move the existing creator workspace onto the formal frontend/IR contract where needed.
-- Visual scene, animation, tile, collision and event workflows operate directly on canonical RetroStudio data.
-- Target profile selector with live hardware budgets and compatibility guidance.
-- Creator-friendly build/run workflow without requiring Godot.
-- Keep advanced scripting optional and progressive.
+- Formalize the native Linux editor as a consumer of the same frontend contract used by Godot.
+- Move frontend-only concerns out of the canonical project/compiler core.
+- Improve creator workflows for scene composition, animation, events, behaviours, assets and target previews.
+- Preserve editor state separately from portable project semantics where appropriate.
+- Keep headless builds independent of GUI toolkit availability.
 
-Exit criterion: the reference game can be authored entirely in the native editor and produces semantically equivalent RetroStudio IR to the Godot-authored fixture.
+Exit criterion: Native Editor and Godot frontend can independently edit the same supported project subset without changing target build semantics.
 
 ## M14 — Multi-frontend interoperability
 
-- Define safe interchange rules between Native Editor and Godot workflows.
-- Preserve stable IDs and portable metadata across frontend round trips.
-- Detect frontend-specific data that cannot round-trip losslessly.
-- Add conformance tests proving both frontends consume the same core semantics.
-- Document recommended workflows for teams mixing Godot and RetroStudio Native Editor.
+- Round-trip fixtures between Native Editor, Godot and canonical RetroStudio IR.
+- Detect unsupported frontend constructs explicitly.
+- Preserve unknown/forward-compatible metadata where safe.
+- Add migration/version compatibility tests.
+- Document mixed-workflow recommendations for artists, designers and programmers.
+
+Exit criterion: a reference project can move Native Editor → Godot → Native Editor while retaining all supported gameplay and asset semantics and producing the same target build inputs.
 
 ## M15 — Expanded retro target families
 
-After Amiga and Atari prove the architecture, evaluate additional clean backends such as DOS, Mega Drive, SNES and selected 8-bit systems. New targets must use the same frontend-independent IR and backend contracts. Platform scope is driven by achievable quality and maintainability, not target count.
+- Add capability profiles and backend contracts for additional families without weakening stronger targets to a lowest common denominator.
+- Planned families include Amiga A500/OCS/ECS/AGA variants, Atari ST/STE/Falcon, DOS, and later C64, Mega Drive, SNES and selected 8-bit systems.
+- Surface target-specific resource budgets and feature availability in authoring frontends.
+- Allow richer assets/features on stronger targets from the same canonical project where capability profiles permit them.
 
-## Long-term
-
-RetroStudio aims to become a frontend-independent creator platform for high-quality games on classic hardware: one project model, one asset/build pipeline and multiple authoring experiences and target backends.
-
-The native RetroStudio Editor remains the purpose-built creator experience. Godot remains a first-class optional frontend for creators who prefer it. A dedicated Godot-derived RetroStudio distribution may be evaluated only if addon APIs become a material limitation; maintaining a permanent Godot fork is not a prerequisite or near-term goal.
-
-Advanced native/script extension points must complement, not replace, the creator-first visual workflow. Adding another platform must not make the core platform-specific.
+Exit criterion: one creator project can target multiple materially different retro systems with deterministic builds, explicit capability diagnostics and no frontend-specific target logic.
