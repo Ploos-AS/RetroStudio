@@ -85,6 +85,27 @@ def resize_box(entity: Entity, kind: str, x: float, y: float, width: float, heig
         set_trigger(entity, shape, event, str(component.data.get("filter_tag", "")))
 
 
+def resize_circle(entity: Entity, kind: str, center_x: float, center_y: float, radius: float) -> None:
+    """Resize an existing circle collision component while preserving metadata."""
+    component_type = COLLIDER_COMPONENT if kind == "collider" else TRIGGER_COMPONENT if kind == "trigger" else ""
+    if not component_type:
+        raise ValueError(f"unknown collision kind: {kind}")
+    component = _component(entity, component_type)
+    if component is None:
+        raise ValueError(f"entity has no {kind}")
+    base_x, base_y = _position(entity)
+    shape = CollisionShape("circle", float(center_x) - base_x, float(center_y) - base_y, radius=float(radius))
+    if shape.diagnostics():
+        raise ValueError("resized collision radius must be greater than zero")
+    if kind == "collider":
+        set_collider(entity, shape, layer=str(component.data.get("layer", "default")), solid=bool(component.data.get("solid", True)))
+    else:
+        event = str(component.data.get("event", "")).strip()
+        if not event:
+            raise ValueError("trigger event is required")
+        set_trigger(entity, shape, event, str(component.data.get("filter_tag", "")))
+
+
 def paint_box(entity: Entity, kind: str, start_x: float, start_y: float, end_x: float, end_y: float, *, label: str = "default", filter_tag: str = "", solid: bool = True) -> None:
     """Apply a box painted directly on a scene canvas."""
     shape = box_from_drag(entity, start_x, start_y, end_x, end_y)
