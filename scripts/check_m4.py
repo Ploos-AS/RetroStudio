@@ -2,7 +2,13 @@
 from pathlib import Path
 
 root = Path(__file__).resolve().parents[1]
-desktop = (root / "retrostudio/desktop.py").read_text(encoding="utf-8")
+# CreatorShell is intentionally split: desktop_base.py owns the established M4
+# workspace shell while desktop.py subclasses it with newer Scene Composer
+# integrations. Qualify the composed implementation rather than one physical file.
+desktop = "\n".join(
+    (root / path).read_text(encoding="utf-8")
+    for path in ("retrostudio/desktop_base.py", "retrostudio/desktop.py")
+)
 creator_doc = (root / "docs/CREATOR_FIRST.md").read_text(encoding="utf-8")
 creator_ops = (root / "retrostudio/creator.py").read_text(encoding="utf-8")
 animation = (root / "retrostudio/animation.py").read_text(encoding="utf-8")
