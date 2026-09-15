@@ -4,6 +4,13 @@
 
 RetroStudio is creator-first. Artists and game designers should be able to focus on beautiful source assets, animation, levels, music and game design while the studio handles classic-hardware conversion, optimization and build complexity. Source assets remain non-destructive and target backends provide hardware-specific quality guidance.
 
+RetroStudio is not tied to one editor. The long-term product has two first-class authoring frontends over the same platform-neutral core and project model:
+
+1. **RetroStudio Native Editor** — a Linux-first, retro-focused visual creator environment designed for artists, designers and asset makers.
+2. **Godot integration** — an addon/export bridge for creators who prefer Godot's mature editor and workflows.
+
+Both frontends must feed the same RetroStudio project/IR, compiler, asset pipeline and target backends. Target games do not require the Godot runtime. A Godot fork is explicitly deferred unless future editor requirements cannot reasonably be delivered through the addon/integration boundary.
+
 ## M0 — Foundation
 
 - [x] Define platform-neutral core responsibilities.
@@ -115,6 +122,55 @@ Current M5 foundation stores behaviours as `behaviour.<Name>` entity components 
 - Plugin documentation and examples.
 - Creator tutorials and starter templates.
 
+## M11 — Canonical RetroStudio IR and frontend contract
+
+- Formalize the platform-neutral RetroStudio intermediate representation (IR) used by every authoring frontend.
+- Separate authoring documents from generated target artifacts.
+- Define stable scene, animation, event, behaviour, asset and metadata interchange contracts.
+- Define frontend capability/version negotiation.
+- Add deterministic import/export and round-trip fixtures.
+- Ensure CLI builds are independent of both the native editor and Godot.
+
+Exit criterion: the same checked-in project/IR fixture can be produced/consumed without frontend-specific target logic and builds identically through the headless RetroStudio toolchain.
+
+## M12 — Godot frontend foundation
+
+- Godot 4 addon that connects to RetroStudio without embedding target-specific logic in Godot.
+- Import/export mapping between Godot scenes/resources and RetroStudio IR.
+- Map sprites, animations, tile maps, scenes, transforms and basic gameplay metadata.
+- Surface RetroStudio target profiles and structured diagnostics inside Godot.
+- Build/export commands invoke the same RetroStudio CLI/compiler used by the native editor.
+- Preserve high-quality Godot source assets non-destructively.
+- Document unsupported Godot features explicitly rather than silently approximating them.
+
+Exit criterion: one reference game can be authored through Godot, exported to RetroStudio IR and built by the normal headless pipeline with deterministic output.
+
+## M13 — Native Editor as first-class frontend
+
+- Move the existing creator workspace onto the formal frontend/IR contract where needed.
+- Visual scene, animation, tile, collision and event workflows operate directly on canonical RetroStudio data.
+- Target profile selector with live hardware budgets and compatibility guidance.
+- Creator-friendly build/run workflow without requiring Godot.
+- Keep advanced scripting optional and progressive.
+
+Exit criterion: the reference game can be authored entirely in the native editor and produces semantically equivalent RetroStudio IR to the Godot-authored fixture.
+
+## M14 — Multi-frontend interoperability
+
+- Define safe interchange rules between Native Editor and Godot workflows.
+- Preserve stable IDs and portable metadata across frontend round trips.
+- Detect frontend-specific data that cannot round-trip losslessly.
+- Add conformance tests proving both frontends consume the same core semantics.
+- Document recommended workflows for teams mixing Godot and RetroStudio Native Editor.
+
+## M15 — Expanded retro target families
+
+After Amiga and Atari prove the architecture, evaluate additional clean backends such as DOS, Mega Drive, SNES and selected 8-bit systems. New targets must use the same frontend-independent IR and backend contracts. Platform scope is driven by achievable quality and maintainability, not target count.
+
 ## Long-term
 
-RetroStudio may support additional classic targets, but only through clean backend contracts. Adding another platform must not make the core platform-specific. Advanced native/script extension points must complement, not replace, the creator-first visual workflow.
+RetroStudio aims to become a frontend-independent creator platform for high-quality games on classic hardware: one project model, one asset/build pipeline and multiple authoring experiences and target backends.
+
+The native RetroStudio Editor remains the purpose-built creator experience. Godot remains a first-class optional frontend for creators who prefer it. A dedicated Godot-derived RetroStudio distribution may be evaluated only if addon APIs become a material limitation; maintaining a permanent Godot fork is not a prerequisite or near-term goal.
+
+Advanced native/script extension points must complement, not replace, the creator-first visual workflow. Adding another platform must not make the core platform-specific.
