@@ -6,6 +6,7 @@ from retrostudio.collision_editor import (
     overlays_for_entity,
     paint_box,
     remove_collision,
+    resize_box,
     resize_box_from_scene,
 )
 from retrostudio.model import Component, Entity
@@ -59,6 +60,28 @@ def test_resize_box_converts_scene_to_local():
     entity = entity_at()
     shape = resize_box_from_scene(entity, 120, 70, 48, 20)
     assert (shape.x, shape.y, shape.width, shape.height) == (20, 20, 48, 20)
+
+
+def test_resize_collider_preserves_metadata():
+    entity = entity_at()
+    apply_box_collider(entity, 4, 6, 32, 18, layer="player", solid=False)
+    resize_box(entity, "collider", 120, 70, 48, 20)
+    component = next(component for component in entity.components if component.type == "collision.collider")
+    overlay = overlays_for_entity(entity)[0]
+    assert (overlay.x, overlay.y, overlay.width, overlay.height) == (120, 70, 48, 20)
+    assert component.data["layer"] == "player"
+    assert component.data["solid"] is False
+
+
+def test_resize_trigger_preserves_event_and_filter():
+    entity = entity_at()
+    apply_box_trigger(entity, 0, 0, 32, 32, "door.open", "player")
+    resize_box(entity, "trigger", 110, 60, 50, 25)
+    component = next(component for component in entity.components if component.type == "collision.trigger")
+    overlay = overlays_for_entity(entity)[0]
+    assert (overlay.x, overlay.y, overlay.width, overlay.height) == (110, 60, 50, 25)
+    assert component.data["event"] == "door.open"
+    assert component.data["filter_tag"] == "player"
 
 
 def test_remove_collision_only_removes_requested_kind():
