@@ -37,6 +37,14 @@ from .collision import (
     set_collider,
     set_trigger,
 )
+from .collision_editor import (
+    CollisionOverlay,
+    apply_box_collider,
+    apply_box_trigger,
+    apply_circle_collider,
+    overlays_for_entity,
+    remove_collision,
+)
 from .model import Component, Diagnostic, Entity, Project, Scene, load_project, save_project
 from .preview import (
     PreviewFact,
@@ -83,6 +91,7 @@ __all__ = [
     "COLLIDER_COMPONENT",
     "CONDITION_OPERATORS",
     "Capability",
+    "CollisionOverlay",
     "CollisionShape",
     "CommandHistory",
     "Component",
@@ -107,6 +116,9 @@ __all__ = [
     "WORKSPACES",
     "WorkspaceState",
     "add_behaviour",
+    "apply_box_collider",
+    "apply_box_trigger",
+    "apply_circle_collider",
     "behaviour_type",
     "budget_diagnostics",
     "build_quality_report",
@@ -120,7 +132,9 @@ __all__ = [
     "load_project",
     "load_state_machine",
     "negotiate_backend",
+    "overlays_for_entity",
     "remove_behaviour",
+    "remove_collision",
     "save_clip",
     "save_project",
     "save_state_machine",
