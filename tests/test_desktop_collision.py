@@ -1,5 +1,5 @@
 from retrostudio.desktop_collision import CollisionToolState, SceneCollisionController
-from retrostudio.collision_editor import apply_box_collider, apply_box_trigger, overlays_for_entity
+from retrostudio.collision_editor import apply_box_collider, apply_box_trigger, apply_circle_collider, overlays_for_entity
 from retrostudio.model import Component, Entity
 
 
@@ -113,6 +113,24 @@ def test_nw_handle_resizes_trigger_and_preserves_metadata():
     assert (overlay.x, overlay.y, overlay.width, overlay.height) == (90, 40, 42, 30)
     assert trigger.data["event"] == "door.open"
     assert trigger.data["filter_tag"] == "player"
+    assert changed == [True]
+
+
+def test_circle_radius_handle_resizes_collider_and_preserves_metadata():
+    canvas = Canvas()
+    changed = []
+    target = entity()
+    apply_circle_collider(target, 8, 6, 12, layer="player", solid=False)
+    controller = SceneCollisionController(canvas, target, on_change=lambda: changed.append(True))
+    controller.render()
+    controller.pointer_down(Event(120, 56))
+    controller.pointer_move(Event(138, 56))
+    controller.pointer_up(Event(138, 56))
+    overlay = overlays_for_entity(target)[0]
+    collision = next(component for component in target.components if component.type == "collision.collider")
+    assert (overlay.x, overlay.y, overlay.radius) == (108, 56, 30)
+    assert collision.data["layer"] == "player"
+    assert collision.data["solid"] is False
     assert changed == [True]
 
 
