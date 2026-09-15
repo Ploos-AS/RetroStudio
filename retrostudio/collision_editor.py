@@ -47,19 +47,37 @@ def overlays_for_entity(entity: Entity) -> list[CollisionOverlay]:
             continue
         shape = CollisionShape.from_dict(shape_data)
         label = str(component.data.get("layer", "default")) if kind == "collider" else str(component.data.get("event", "trigger"))
-        overlays.append(
-            CollisionOverlay(
-                kind=kind,
-                shape=shape.shape,
-                x=base_x + shape.x,
-                y=base_y + shape.y,
-                width=shape.width,
-                height=shape.height,
-                radius=shape.radius,
-                label=label,
-            )
-        )
+        overlays.append(CollisionOverlay(kind, shape.shape, base_x + shape.x, base_y + shape.y, shape.width, shape.height, shape.radius, label))
     return overlays
+
+
+def box_from_drag(entity: Entity, start_x: float, start_y: float, end_x: float, end_y: float) -> CollisionShape:
+    """Convert a scene-canvas drag into entity-local normalized box geometry."""
+    base_x, base_y = _position(entity)
+    left, right = sorted((float(start_x), float(end_x)))
+    top, bottom = sorted((float(start_y), float(end_y)))
+    return CollisionShape("box", left - base_x, top - base_y, right - left, bottom - top)
+
+
+def resize_box_from_scene(entity: Entity, x: float, y: float, width: float, height: float) -> CollisionShape:
+    """Convert scene-space box bounds, as produced by resize handles, to local geometry."""
+    base_x, base_y = _position(entity)
+    return CollisionShape("box", float(x) - base_x, float(y) - base_y, float(width), float(height))
+
+
+def paint_box(entity: Entity, kind: str, start_x: float, start_y: float, end_x: float, end_y: float, *, label: str = "default", filter_tag: str = "", solid: bool = True) -> None:
+    """Apply a box painted directly on a scene canvas."""
+    shape = box_from_drag(entity, start_x, start_y, end_x, end_y)
+    if shape.diagnostics():
+        raise ValueError("painted collision area must have positive width and height")
+    if kind == "collider":
+        set_collider(entity, shape, layer=label.strip() or "default", solid=solid)
+    elif kind == "trigger":
+        if not label.strip():
+            raise ValueError("trigger event is required")
+        set_trigger(entity, shape, label.strip(), filter_tag.strip())
+    else:
+        raise ValueError(f"unknown collision kind: {kind}")
 
 
 def apply_box_collider(entity: Entity, x: float, y: float, width: float, height: float, layer: str = "default", solid: bool = True) -> None:
