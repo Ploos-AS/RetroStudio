@@ -35,28 +35,42 @@ class SceneCollisionController:
         self.on_change = on_change
         self.layer = SceneCollisionLayer(canvas, entity)
         self._dragging = False
+        self._resizing = False
 
     def render(self) -> None:
         self.layer.render()
 
     def pointer_down(self, event) -> None:
+        handle = self.layer.handle_at(float(event.x), float(event.y))
+        if handle is not None:
+            kind, corner = handle
+            self._resizing = True
+            self.layer.begin_resize(kind, corner)
+            return
         if not self.state.painting:
             return
         self._dragging = True
         self.layer.begin_paint(float(event.x), float(event.y))
 
     def pointer_move(self, event) -> None:
-        if self._dragging:
+        if self._resizing:
+            self.layer.update_resize(float(event.x), float(event.y))
+        elif self._dragging:
             self.layer.update_paint(float(event.x), float(event.y))
 
     def pointer_up(self, event) -> None:
-        if not self._dragging:
+        changed = False
+        if self._resizing:
+            self._resizing = False
+            changed = self.layer.finish_resize(float(event.x), float(event.y))
+        elif self._dragging:
+            self._dragging = False
+            label = self.state.collider_layer if self.state.tool == "collider" else self.state.trigger_event
+            changed = self.layer.finish_paint(self.state.tool, float(event.x), float(event.y), label=label, filter_tag=self.state.trigger_filter)
+        else:
             return
-        self._dragging = False
-        label = self.state.collider_layer if self.state.tool == "collider" else self.state.trigger_event
-        self.layer.finish_paint(self.state.tool, float(event.x), float(event.y), label=label, filter_tag=self.state.trigger_filter)
         self.layer.render()
-        if self.on_change is not None:
+        if changed and self.on_change is not None:
             self.on_change()
 
     def bind(self) -> None:
