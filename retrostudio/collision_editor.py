@@ -65,6 +65,26 @@ def resize_box_from_scene(entity: Entity, x: float, y: float, width: float, heig
     return CollisionShape("box", float(x) - base_x, float(y) - base_y, float(width), float(height))
 
 
+def resize_box(entity: Entity, kind: str, x: float, y: float, width: float, height: float) -> None:
+    """Resize an existing box collision component while preserving its metadata."""
+    component_type = COLLIDER_COMPONENT if kind == "collider" else TRIGGER_COMPONENT if kind == "trigger" else ""
+    if not component_type:
+        raise ValueError(f"unknown collision kind: {kind}")
+    component = _component(entity, component_type)
+    if component is None:
+        raise ValueError(f"entity has no {kind}")
+    shape = resize_box_from_scene(entity, x, y, width, height)
+    if shape.diagnostics():
+        raise ValueError("resized collision area must have positive width and height")
+    if kind == "collider":
+        set_collider(entity, shape, layer=str(component.data.get("layer", "default")), solid=bool(component.data.get("solid", True)))
+    else:
+        event = str(component.data.get("event", "")).strip()
+        if not event:
+            raise ValueError("trigger event is required")
+        set_trigger(entity, shape, event, str(component.data.get("filter_tag", "")))
+
+
 def paint_box(entity: Entity, kind: str, start_x: float, start_y: float, end_x: float, end_y: float, *, label: str = "default", filter_tag: str = "", solid: bool = True) -> None:
     """Apply a box painted directly on a scene canvas."""
     shape = box_from_drag(entity, start_x, start_y, end_x, end_y)
