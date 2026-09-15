@@ -75,12 +75,13 @@ Exit criterion: host tests prove workspace navigation, selection, creator guidan
 - [x] Dialogue behaviour plus schema-driven creator-facing behaviour editor foundation with add/update/remove operations and a reusable Tk editor panel.
 - [x] Animation states and transitions foundation with clip-referencing states, creator parameters/conditions, normalized exit timing, validation and JSON persistence.
 - [x] Collision/trigger data-model foundation with platform-neutral box/circle shapes, collider layers, solid flags, trigger events/filters and structured validation.
-- Collision painting/editor UX and scene overlays.
+- [x] Collision editor/overlay foundation with toolkit-neutral scene-space overlays, box/circle collider editing, box trigger editing, removal operations and a reusable creator-facing Tk panel.
+- Direct-manipulation collision painting, resize handles and Scene Composer integration.
 - Visual event graph.
 - Prefabs/templates for common game genres.
 - Progressive scripting/runtime interface for advanced creators.
 
-Current M5 foundation stores behaviours as `behaviour.<Name>` entity components so projects remain ordinary scene data. Backends translate these authoring components into target/runtime-specific implementations; RetroStudio owns only the creator-facing semantics, defaults and validation. The behaviour editor is schema-driven (`number`, `boolean`, `choice`, text and multiline fields), so new behaviours can expose creator-friendly controls without hand-written raw component editors. Animation state machines remain platform-neutral: creator states reference reusable clip IDs and transitions use named parameters and simple conditions that backends can translate later. Collision authoring follows the same rule: canonical collider/trigger components describe creator intent while each target backend remains responsible for an efficient native implementation.
+Current M5 foundation stores behaviours as `behaviour.<Name>` entity components so projects remain ordinary scene data. Backends translate these authoring components into target/runtime-specific implementations; RetroStudio owns only the creator-facing semantics, defaults and validation. The behaviour editor is schema-driven (`number`, `boolean`, `choice`, text and multiline fields), so new behaviours can expose creator-friendly controls without hand-written raw component editors. Animation state machines remain platform-neutral: creator states reference reusable clip IDs and transitions use named parameters and simple conditions that backends can translate later. Collision authoring follows the same rule: canonical collider/trigger components describe creator intent while each target backend remains responsible for an efficient native implementation. Toolkit-neutral overlay geometry keeps collision visualization reusable by the native Scene Composer and future frontends instead of embedding project semantics in Tk canvas code.
 
 ## M6 — Host Preview
 
