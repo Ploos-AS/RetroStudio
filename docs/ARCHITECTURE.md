@@ -129,6 +129,8 @@ The IR is an authoring/build interchange representation, not a requirement that 
 
 ## Compatibility rules
 
+**RetroStudio must never depend on a product frontend/backend.** This is the foundational M0 dependency invariant.
+
 - A target backend may depend on RetroStudio; RetroStudio must never depend on a product target backend.
 - A frontend may depend on RetroStudio; RetroStudio core semantics must never depend on Godot or the native GUI toolkit.
 - Target-specific constraints belong in backends and target profiles.
