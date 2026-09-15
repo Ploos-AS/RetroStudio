@@ -28,6 +28,15 @@ from .behaviours import (
     entity_behaviours,
     remove_behaviour,
 )
+from .collision import (
+    COLLIDER_COMPONENT,
+    SHAPE_TYPES,
+    TRIGGER_COMPONENT,
+    CollisionShape,
+    collision_diagnostics,
+    set_collider,
+    set_trigger,
+)
 from .model import Component, Diagnostic, Entity, Project, Scene, load_project, save_project
 from .preview import (
     PreviewFact,
@@ -71,8 +80,10 @@ __all__ = [
     "BackendResult",
     "BehaviourDefinition",
     "BuildArtifact",
+    "COLLIDER_COMPONENT",
     "CONDITION_OPERATORS",
     "Capability",
+    "CollisionShape",
     "CommandHistory",
     "Component",
     "ContentCache",
@@ -85,10 +96,12 @@ __all__ = [
     "Project",
     "QualityReport",
     "ResourceUsage",
+    "SHAPE_TYPES",
     "Scene",
     "Selection",
     "SetTargetCommand",
     "TARGET_API_VERSION",
+    "TRIGGER_COMPONENT",
     "TargetBackend",
     "TargetPreview",
     "WORKSPACES",
@@ -97,6 +110,7 @@ __all__ = [
     "behaviour_type",
     "budget_diagnostics",
     "build_quality_report",
+    "collision_diagnostics",
     "entity_behaviours",
     "guidance_for_diagnostic",
     "hash_bytes",
@@ -110,5 +124,7 @@ __all__ = [
     "save_clip",
     "save_project",
     "save_state_machine",
+    "set_collider",
+    "set_trigger",
     "usage_percent",
 ]
