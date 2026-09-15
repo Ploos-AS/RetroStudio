@@ -2,8 +2,11 @@ from retrostudio.collision_editor import (
     apply_box_collider,
     apply_box_trigger,
     apply_circle_collider,
+    box_from_drag,
     overlays_for_entity,
+    paint_box,
     remove_collision,
+    resize_box_from_scene,
 )
 from retrostudio.model import Component, Entity
 
@@ -36,6 +39,26 @@ def test_trigger_overlay_carries_event_label():
     overlay = overlays_for_entity(entity)[0]
     assert overlay.kind == "trigger"
     assert overlay.label == "door.open"
+
+
+def test_drag_is_normalized_and_entity_local():
+    entity = entity_at()
+    shape = box_from_drag(entity, 150, 90, 110, 60)
+    assert (shape.x, shape.y, shape.width, shape.height) == (10, 10, 40, 30)
+
+
+def test_paint_box_creates_scene_overlay():
+    entity = entity_at()
+    paint_box(entity, "collider", 104, 56, 140, 80, label="player")
+    overlay = overlays_for_entity(entity)[0]
+    assert (overlay.x, overlay.y, overlay.width, overlay.height) == (104, 56, 36, 24)
+    assert overlay.label == "player"
+
+
+def test_resize_box_converts_scene_to_local():
+    entity = entity_at()
+    shape = resize_box_from_scene(entity, 120, 70, 48, 20)
+    assert (shape.x, shape.y, shape.width, shape.height) == (20, 20, 48, 20)
 
 
 def test_remove_collision_only_removes_requested_kind():
