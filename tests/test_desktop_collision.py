@@ -1,4 +1,5 @@
 from retrostudio.desktop_collision import CollisionToolState, SceneCollisionController
+from retrostudio.collision_editor import apply_box_collider, apply_box_trigger, overlays_for_entity
 from retrostudio.model import Component, Entity
 
 
@@ -77,3 +78,50 @@ def test_trigger_drag_uses_event_and_filter():
     trigger = next(component for component in target.components if component.type == "collision.trigger")
     assert trigger.data["event"] == "door.open"
     assert trigger.data["filter_tag"] == "player"
+
+
+def test_se_handle_resizes_collider_and_preserves_metadata():
+    canvas = Canvas()
+    changed = []
+    target = entity()
+    apply_box_collider(target, 0, 0, 32, 20, layer="player", solid=False)
+    controller = SceneCollisionController(canvas, target, on_change=lambda: changed.append(True))
+    controller.render()
+    controller.pointer_down(Event(132, 70))
+    controller.pointer_move(Event(150, 82))
+    controller.pointer_up(Event(150, 82))
+    overlay = overlays_for_entity(target)[0]
+    collision = next(component for component in target.components if component.type == "collision.collider")
+    assert (overlay.x, overlay.y, overlay.width, overlay.height) == (100, 50, 50, 32)
+    assert collision.data["layer"] == "player"
+    assert collision.data["solid"] is False
+    assert changed == [True]
+
+
+def test_nw_handle_resizes_trigger_and_preserves_metadata():
+    canvas = Canvas()
+    changed = []
+    target = entity()
+    apply_box_trigger(target, 0, 0, 32, 20, "door.open", "player")
+    controller = SceneCollisionController(canvas, target, on_change=lambda: changed.append(True))
+    controller.render()
+    controller.pointer_down(Event(100, 50))
+    controller.pointer_move(Event(90, 40))
+    controller.pointer_up(Event(90, 40))
+    overlay = overlays_for_entity(target)[0]
+    trigger = next(component for component in target.components if component.type == "collision.trigger")
+    assert (overlay.x, overlay.y, overlay.width, overlay.height) == (90, 40, 42, 30)
+    assert trigger.data["event"] == "door.open"
+    assert trigger.data["filter_tag"] == "player"
+    assert changed == [True]
+
+
+def test_zero_area_paint_is_ignored_without_change_callback():
+    canvas = Canvas()
+    changed = []
+    target = entity()
+    controller = SceneCollisionController(canvas, target, CollisionToolState(tool="collider"), lambda: changed.append(True))
+    controller.pointer_down(Event(110, 60))
+    controller.pointer_up(Event(110, 60))
+    assert not any(component.type == "collision.collider" for component in target.components)
+    assert changed == []
