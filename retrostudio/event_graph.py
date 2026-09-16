@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from .model import Diagnostic
+from .model import Component, Diagnostic, Entity
 
 EVENT_GRAPH_COMPONENT = "logic.event_graph"
 
@@ -33,13 +33,7 @@ class EventNode:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "EventNode":
-        return cls(
-            node_id=str(raw["node_id"]),
-            kind=str(raw["kind"]),
-            x=float(raw.get("x", 0)),
-            y=float(raw.get("y", 0)),
-            data=dict(raw.get("data", {})),
-        )
+        return cls(node_id=str(raw["node_id"]), kind=str(raw["kind"]), x=float(raw.get("x", 0)), y=float(raw.get("y", 0)), data=dict(raw.get("data", {})))
 
     def to_dict(self) -> dict[str, Any]:
         return {"node_id": self.node_id, "kind": self.kind, "x": self.x, "y": self.y, "data": self.data}
@@ -66,16 +60,10 @@ class EventGraph:
 
     @classmethod
     def from_dict(cls, raw: dict[str, Any]) -> "EventGraph":
-        return cls(
-            nodes=[EventNode.from_dict(item) for item in raw.get("nodes", [])],
-            links=[EventLink.from_dict(item) for item in raw.get("links", [])],
-        )
+        return cls(nodes=[EventNode.from_dict(item) for item in raw.get("nodes", [])], links=[EventLink.from_dict(item) for item in raw.get("links", [])])
 
     def to_dict(self) -> dict[str, Any]:
-        return {
-            "nodes": [node.to_dict() for node in self.nodes],
-            "links": [link.to_dict() for link in self.links],
-        }
+        return {"nodes": [node.to_dict() for node in self.nodes], "links": [link.to_dict() for link in self.links]}
 
     def node(self, node_id: str) -> EventNode:
         for node in self.nodes:
@@ -91,6 +79,11 @@ class EventGraph:
         node = EventNode(node_id, kind, float(x), float(y), dict(data))
         self.nodes.append(node)
         return node
+
+    def move_node(self, node_id: str, x: float, y: float) -> None:
+        node = self.node(node_id)
+        node.x = float(x)
+        node.y = float(y)
 
     def connect(self, source: str, target: str, outlet: str = "next") -> EventLink:
         self.node(source)
@@ -121,9 +114,8 @@ class EventGraph:
                 out.append(Diagnostic("error", "event_graph.trigger_event", "trigger event is required", path))
             if node.kind == "action.emit_event" and not str(node.data.get("event", "")).strip():
                 out.append(Diagnostic("error", "event_graph.emit_event", "event name is required", path))
-            if node.kind == "action.set_property":
-                if not str(node.data.get("property", "")).strip():
-                    out.append(Diagnostic("error", "event_graph.property", "property name is required", path))
+            if node.kind == "action.set_property" and not str(node.data.get("property", "")).strip():
+                out.append(Diagnostic("error", "event_graph.property", "property name is required", path))
         for index, link in enumerate(self.links):
             path = f"links.{index}"
             if link.source not in ids:
@@ -131,3 +123,21 @@ class EventGraph:
             if link.target not in ids:
                 out.append(Diagnostic("error", "event_graph.link_target", f"unknown target node: {link.target}", path))
         return out
+
+
+def graph_for_entity(entity: Entity) -> EventGraph:
+    """Load the canonical event graph component for an entity, or an empty graph."""
+    for component in entity.components:
+        if component.type == EVENT_GRAPH_COMPONENT:
+            return EventGraph.from_dict(component.data)
+    return EventGraph()
+
+
+def store_graph(entity: Entity, graph: EventGraph) -> None:
+    """Create or replace an entity's canonical event graph component."""
+    data = graph.to_dict()
+    for component in entity.components:
+        if component.type == EVENT_GRAPH_COMPONENT:
+            component.data = data
+            return
+    entity.components.append(Component(EVENT_GRAPH_COMPONENT, data))
