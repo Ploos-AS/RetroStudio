@@ -16,6 +16,7 @@ WORKSPACES = (
     "project",
     "assets",
     "scene",
+    "event_graph",
     "inspector",
     "animation",
     "target_preview",
@@ -56,11 +57,7 @@ class WorkspaceState:
     def clear_selection(self) -> None:
         self.selection = None
 
-    def set_feedback(
-        self,
-        diagnostics: list[Diagnostic],
-        guidance: list[CreatorGuidance] | None = None,
-    ) -> None:
+    def set_feedback(self, diagnostics: list[Diagnostic], guidance: list[CreatorGuidance] | None = None) -> None:
         self.diagnostics = list(diagnostics)
         self.guidance = list(guidance or [])
 
