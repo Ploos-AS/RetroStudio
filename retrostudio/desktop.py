@@ -40,22 +40,15 @@ class CreatorShell(_BaseCreatorShell):
         canvas_host = ttk.Frame(split, padding=6)
         split.add(palette, weight=1)
         split.add(canvas_host, weight=4)
-
         ttk.Label(palette, text="Node Palette", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 6))
         for kind in self.event_graph_workspace.palette:
             label = kind.replace(".", " / ").replace("_", " ").title()
             ttk.Button(palette, text=label, command=lambda value=kind: self._add_event_node(value)).pack(fill="x", pady=2)
         ttk.Separator(palette).pack(fill="x", pady=8)
         ttk.Button(palette, text="Delete Selected", command=self._delete_event_node).pack(fill="x")
-
         self.event_graph_canvas_widget = tk.Canvas(canvas_host, background="white", highlightthickness=1)
         self.event_graph_canvas_widget.pack(fill="both", expand=True)
-        self.event_graph_canvas = EventGraphCanvas(
-            self.event_graph_canvas_widget,
-            self.event_graph_workspace.graph,
-            on_change=self._event_graph_changed,
-            on_select=self.event_graph_workspace.select,
-        )
+        self.event_graph_canvas = EventGraphCanvas(self.event_graph_canvas_widget, self.event_graph_workspace.graph, on_change=self._event_graph_changed, on_select=self.event_graph_workspace.select)
         self.event_graph_canvas.selected_node_id = self.event_graph_workspace.selected_node_id
         self.event_graph_canvas.render()
         self.event_graph_canvas_widget.bind("<ButtonPress-1>", self._event_graph_down)
@@ -72,16 +65,17 @@ class CreatorShell(_BaseCreatorShell):
             self.activate("event_graph")
 
     def _event_graph_down(self, event) -> None:
-        self.event_graph_canvas.begin_move(event.x, event.y)
+        self.event_graph_canvas.begin_gesture(event.x, event.y)
 
     def _event_graph_move(self, event) -> None:
-        self.event_graph_canvas.update_move(event.x, event.y)
+        self.event_graph_canvas.update_gesture(event.x, event.y)
 
     def _event_graph_up(self, event) -> None:
-        self.event_graph_canvas.finish_move(event.x, event.y)
+        self.event_graph_canvas.finish_gesture(event.x, event.y)
 
     def _event_graph_changed(self) -> None:
-        self.status.set("Event Graph updated")
+        if hasattr(self, "status"):
+            self.status.set("Event Graph updated")
 
     def _render_scene(self) -> None:
         split = ttk.Panedwindow(self.workspace_frame, orient="horizontal")
