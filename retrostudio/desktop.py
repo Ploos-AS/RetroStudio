@@ -38,8 +38,10 @@ class CreatorShell(_BaseCreatorShell):
         split.pack(fill="both", expand=True)
         palette = ttk.Frame(split, padding=6)
         canvas_host = ttk.Frame(split, padding=6)
+        inspector = ttk.Frame(split, padding=6)
         split.add(palette, weight=1)
         split.add(canvas_host, weight=4)
+        split.add(inspector, weight=2)
         ttk.Label(palette, text="Node Palette", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 6))
         for kind in self.event_graph_workspace.palette:
             label = kind.replace(".", " / ").replace("_", " ").title()
@@ -48,12 +50,42 @@ class CreatorShell(_BaseCreatorShell):
         ttk.Button(palette, text="Delete Selected", command=self._delete_event_node).pack(fill="x")
         self.event_graph_canvas_widget = tk.Canvas(canvas_host, background="white", highlightthickness=1)
         self.event_graph_canvas_widget.pack(fill="both", expand=True)
-        self.event_graph_canvas = EventGraphCanvas(self.event_graph_canvas_widget, self.event_graph_workspace.graph, on_change=self._event_graph_changed, on_select=self.event_graph_workspace.select)
+        self.event_graph_canvas = EventGraphCanvas(self.event_graph_canvas_widget, self.event_graph_workspace.graph, on_change=self._event_graph_changed, on_select=self._event_graph_selected)
         self.event_graph_canvas.selected_node_id = self.event_graph_workspace.selected_node_id
         self.event_graph_canvas.render()
         self.event_graph_canvas_widget.bind("<ButtonPress-1>", self._event_graph_down)
         self.event_graph_canvas_widget.bind("<B1-Motion>", self._event_graph_move)
         self.event_graph_canvas_widget.bind("<ButtonRelease-1>", self._event_graph_up)
+        self._render_event_graph_inspector(inspector)
+
+    def _render_event_graph_inspector(self, parent) -> None:
+        ttk.Label(parent, text="Node Inspector", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 8))
+        node = self.event_graph_workspace.selected_node
+        if node is None:
+            ttk.Label(parent, text="Select a node to edit its properties.", wraplength=220).pack(anchor="w")
+            return
+        ttk.Label(parent, text=node.kind.replace(".", " / ").replace("_", " ").title()).pack(anchor="w")
+        ttk.Label(parent, text=node.node_id).pack(anchor="w", pady=(0, 10))
+        for name in self.event_graph_workspace.editable_properties():
+            ttk.Label(parent, text=name.replace("_", " ").title()).pack(anchor="w")
+            variable = tk.StringVar(value=str(node.data.get(name, "")))
+            entry = ttk.Entry(parent, textvariable=variable)
+            entry.pack(fill="x", pady=(1, 7))
+            entry.bind("<Return>", lambda _event, key=name, var=variable: self._set_event_graph_property(key, var.get()))
+            entry.bind("<FocusOut>", lambda _event, key=name, var=variable: self._set_event_graph_property(key, var.get()))
+        diagnostics = [item for item in self.event_graph_workspace.graph.diagnostics() if node.node_id in item.path]
+        if diagnostics:
+            ttk.Separator(parent).pack(fill="x", pady=8)
+            for item in diagnostics:
+                ttk.Label(parent, text=item.message, wraplength=220).pack(anchor="w", pady=2)
+
+    def _set_event_graph_property(self, name: str, value: str) -> None:
+        if self.event_graph_workspace.set_property(name, value):
+            self.event_graph_canvas.render()
+
+    def _event_graph_selected(self, node_id: str | None) -> None:
+        self.event_graph_workspace.select(node_id)
+        self.activate("event_graph")
 
     def _add_event_node(self, kind: str) -> None:
         offset = len(self.event_graph_workspace.graph.nodes) * 24
