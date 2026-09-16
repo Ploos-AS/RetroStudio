@@ -7,8 +7,10 @@ from pathlib import Path
 from tkinter import ttk
 
 from .desktop_base import CreatorShell as _BaseCreatorShell, WORKSPACE_LABELS
+from .event_graph import graph_for_entity, store_graph
 from .event_graph_canvas import EventGraphCanvas
 from .event_graph_workspace import EventGraphWorkspace
+from .model import save_project
 from .scene_collision_desktop import mount_scene_collision
 
 WORKSPACE_LABELS["event_graph"] = "Event Graph"
@@ -19,11 +21,13 @@ class CreatorShell(_BaseCreatorShell):
 
     def __init__(self, root, project=None) -> None:
         self.event_graph_workspace = EventGraphWorkspace(on_change=self._event_graph_changed)
+        self._event_graph_entity_id: str | None = None
         super().__init__(root, project)
 
     def activate(self, workspace: str) -> None:
         if workspace == "event_graph":
             self.state.activate(workspace)
+            self._sync_event_graph_entity()
             self.workspace_title.set(WORKSPACE_LABELS[workspace])
             self.subtitle.configure(text="Build game behaviour visually from events, conditions and actions.")
             for child in self.workspace_frame.winfo_children():
@@ -33,7 +37,32 @@ class CreatorShell(_BaseCreatorShell):
             return
         super().activate(workspace)
 
+    def _event_graph_entity(self):
+        selection = self.state.selection
+        if selection is None or selection.kind != "entity":
+            return None
+        scene = self._active_scene()
+        if scene is None:
+            return None
+        for entity in scene.entities:
+            if entity.entity_id == selection.item_id:
+                return entity
+        return None
+
+    def _sync_event_graph_entity(self) -> None:
+        entity = self._event_graph_entity()
+        entity_id = entity.entity_id if entity is not None else None
+        if entity_id == self._event_graph_entity_id:
+            return
+        self._event_graph_entity_id = entity_id
+        self.event_graph_workspace.graph = graph_for_entity(entity) if entity is not None else type(self.event_graph_workspace.graph)()
+        self.event_graph_workspace.selected_node_id = None
+
     def _render_event_graph(self) -> None:
+        entity = self._event_graph_entity()
+        if entity is None:
+            ttk.Label(self.workspace_frame, text="Select a scene object first; each object owns its own Event Graph.").pack(anchor="nw", padx=12, pady=12)
+            return
         split = ttk.Panedwindow(self.workspace_frame, orient="horizontal")
         split.pack(fill="both", expand=True)
         palette = ttk.Frame(split, padding=6)
@@ -42,7 +71,7 @@ class CreatorShell(_BaseCreatorShell):
         split.add(palette, weight=1)
         split.add(canvas_host, weight=4)
         split.add(inspector, weight=2)
-        ttk.Label(palette, text="Node Palette", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 6))
+        ttk.Label(palette, text=f"Node Palette — {entity.name}", font=("TkDefaultFont", 11, "bold")).pack(anchor="w", pady=(0, 6))
         for kind in self.event_graph_workspace.palette:
             label = kind.replace(".", " / ").replace("_", " ").title()
             ttk.Button(palette, text=label, command=lambda value=kind: self._add_event_node(value)).pack(fill="x", pady=2)
@@ -106,8 +135,15 @@ class CreatorShell(_BaseCreatorShell):
         self.event_graph_canvas.finish_gesture(event.x, event.y)
 
     def _event_graph_changed(self) -> None:
+        if not hasattr(self, "state"):
+            return
+        entity = self._event_graph_entity()
+        if entity is not None:
+            store_graph(entity, self.event_graph_workspace.graph)
+            if self.state.project.source_path:
+                save_project(self.state.project, self.state.project.source_path)
         if hasattr(self, "status"):
-            self.status.set("Event Graph updated")
+            self.status.set("Event Graph saved" if entity is not None else "Event Graph updated")
 
     def _render_scene(self) -> None:
         split = ttk.Panedwindow(self.workspace_frame, orient="horizontal")
