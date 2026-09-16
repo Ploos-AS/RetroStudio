@@ -20,7 +20,6 @@ def _mount_prefab_browser(shell, toolbar_parent, scene) -> None:
     """Add creator templates with preview/configuration before placement."""
     import tkinter as tk
     from tkinter import ttk
-
     from .prefab_browser import PrefabBrowser
 
     browser = PrefabBrowser()
@@ -32,14 +31,27 @@ def _mount_prefab_browser(shell, toolbar_parent, scene) -> None:
 
     def configure(prefab_id: str) -> None:
         definition = browser.definition(prefab_id)
+        preview = browser.preview(prefab_id)
         dialog = tk.Toplevel(shell.root)
         dialog.title(f"Add {definition.name}")
         dialog.transient(shell.root)
         body = ttk.Frame(dialog, padding=12)
         body.pack(fill="both", expand=True)
         ttk.Label(body, text=definition.name, font=("TkDefaultFont", 14, "bold")).pack(anchor="w")
-        ttk.Label(body, text=definition.description, wraplength=420).pack(anchor="w", pady=(3, 12))
-        ttk.Label(body, text=f"Genre: {definition.genre.title()}").pack(anchor="w", pady=(0, 10))
+        ttk.Label(body, text=definition.description, wraplength=420).pack(anchor="w", pady=(3, 8))
+        preview_canvas = tk.Canvas(body, width=420, height=130, background="white", highlightthickness=1)
+        preview_canvas.pack(fill="x", pady=(0, 8))
+        scale = min(3.0, 88.0 / max(preview.width, preview.height, 1.0))
+        width, height = preview.width * scale, preview.height * scale
+        cx, cy = 85.0, 65.0
+        if preview.collision_shape == "circle":
+            preview_canvas.create_oval(cx-width/2, cy-height/2, cx+width/2, cy+height/2, width=2)
+        else:
+            preview_canvas.create_rectangle(cx-width/2, cy-height/2, cx+width/2, cy+height/2, width=2)
+        preview_canvas.create_text(155, 28, anchor="nw", text=f"Footprint: {preview.width:g} × {preview.height:g}")
+        preview_canvas.create_text(155, 52, anchor="nw", text=f"Collision: {preview.collision_shape or 'none'}")
+        preview_canvas.create_text(155, 76, anchor="nw", text="Features: " + (", ".join(preview.features) or "none"), width=245)
+        ttk.Label(body, text=f"Genre: {definition.genre.title()}").pack(anchor="w", pady=(0, 8))
         ttk.Label(body, text="Object name").pack(anchor="w")
         name_var = tk.StringVar(value=definition.name)
         ttk.Entry(body, textvariable=name_var, width=42).pack(fill="x", pady=(1, 8))
@@ -103,7 +115,6 @@ def mount_scene_collision(shell, toolbar_parent, canvas, scene):
     entity = selected_scene_entity(shell.state, scene)
     if entity is None:
         return None
-
     from .scene_collision_mount import SceneCollisionMount
 
     def changed():
