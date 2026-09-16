@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .behaviours import FIELDS
+from .collision import CollisionShape
 from .model import Scene
 from .prefab import PREFABS, PrefabDefinition, instantiate_prefab
 
@@ -19,6 +20,16 @@ class PrefabField:
     field_type: str
     value: Any
     choices: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class PrefabPreview:
+    name: str
+    genre: str
+    width: float
+    height: float
+    collision_shape: str | None
+    features: tuple[str, ...]
 
 
 class PrefabBrowser:
@@ -52,6 +63,24 @@ class PrefabBrowser:
             for field in FIELDS.get(behaviour, ()):
                 out.append(PrefabField(component.type, field.key, field.label, field.field_type, deepcopy(component.data.get(field.key)), field.choices))
         return tuple(out)
+
+    def preview(self, prefab_id: str) -> PrefabPreview:
+        definition = self.definition(prefab_id)
+        width, height = 32.0, 32.0
+        shape_name = None
+        features: list[str] = []
+        for component in definition.components:
+            if component.type.startswith("behaviour."):
+                features.append(component.type.split(".", 1)[1])
+            elif component.type == "collision.collider":
+                raw = component.data.get("shape", {})
+                shape = CollisionShape.from_dict(raw if isinstance(raw, dict) else {})
+                shape_name = shape.shape
+                if shape.shape == "circle":
+                    width = height = shape.radius * 2
+                else:
+                    width, height = shape.width, shape.height
+        return PrefabPreview(definition.name, definition.genre, width, height, shape_name, tuple(features))
 
     def place(self, scene: Scene, prefab_id: str, *, x: int = 64, y: int = 64, name: str | None = None, values: dict[tuple[str, str], Any] | None = None):
         self.definition(prefab_id)
