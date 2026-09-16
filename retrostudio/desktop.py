@@ -12,6 +12,7 @@ from .event_graph_canvas import EventGraphCanvas
 from .event_graph_workspace import EventGraphWorkspace
 from .model import save_project
 from .scene_collision_desktop import mount_scene_collision
+from .scene_transform import move_entity, snap
 
 WORKSPACE_LABELS["event_graph"] = "Event Graph"
 
@@ -22,6 +23,8 @@ class CreatorShell(_BaseCreatorShell):
     def __init__(self, root, project=None) -> None:
         self.event_graph_workspace = EventGraphWorkspace(on_change=self._event_graph_changed)
         self._event_graph_entity_id: str | None = None
+        self.scene_grid_size = 8
+        self._scene_drag = None
         super().__init__(root, project)
 
     def activate(self, workspace: str) -> None:
@@ -184,11 +187,52 @@ class CreatorShell(_BaseCreatorShell):
             tag = f"entity:{entity.entity_id}"
             self.scene_canvas.create_rectangle(x, y, x + 96, y + 48, tags=(tag,))
             self.scene_canvas.create_text(x + 48, y + 24, text=label, width=88, tags=(tag,))
-            self.scene_canvas.tag_bind(tag, "<Button-1>", lambda _event, eid=entity.entity_id: self._select_scene_entity_id(eid))
+            self.scene_canvas.tag_bind(tag, "<ButtonPress-1>", lambda event, eid=entity.entity_id: self._scene_drag_start(event, eid))
+            self.scene_canvas.tag_bind(tag, "<B1-Motion>", self._scene_drag_move)
+            self.scene_canvas.tag_bind(tag, "<ButtonRelease-1>", self._scene_drag_finish)
             self.scene_canvas.tag_bind(tag, "<Double-Button-1>", lambda _event, eid=entity.entity_id: self._select_entity_and_inspect(eid))
         self.scene_collision_mount = mount_scene_collision(self, collision_host, self.scene_canvas, scene)
         if self.scene_collision_mount is None:
             ttk.Label(collision_host, text="Select a scene object to edit collision and triggers.").pack(anchor="w", pady=(0, 6))
+
+    def _scene_drag_start(self, event, entity_id: str):
+        scene = self._active_scene()
+        if scene is None:
+            return
+        entity = next((item for item in scene.entities if item.entity_id == entity_id), None)
+        if entity is None:
+            return
+        position = self._entity_position(entity)
+        if position is None:
+            return
+        self.state.select("entity", entity_id)
+        self._scene_drag = (entity, event.x - position[0], event.y - position[1])
+        return "break"
+
+    def _scene_drag_move(self, event):
+        if self._scene_drag is None:
+            return
+        entity, offset_x, offset_y = self._scene_drag
+        x = snap(event.x - offset_x, self.scene_grid_size)
+        y = snap(event.y - offset_y, self.scene_grid_size)
+        self.scene_canvas.coords(f"entity:{entity.entity_id}", x, y, x + 96, y + 48)
+        self.status.set(f"Move {entity.name}: {x}, {y} — grid {self.scene_grid_size}px")
+        return "break"
+
+    def _scene_drag_finish(self, event):
+        if self._scene_drag is None:
+            return
+        entity, offset_x, offset_y = self._scene_drag
+        self._scene_drag = None
+        x, y = move_entity(entity, event.x - offset_x, event.y - offset_y, grid=self.scene_grid_size)
+        project = self.state.project
+        if project.source_path:
+            save_project(project, project.source_path)
+            self.status.set(f"Moved {entity.name} to {x}, {y} — project saved")
+        else:
+            self.status.set(f"Moved {entity.name} to {x}, {y} — save project to persist")
+        self.activate("scene")
+        return "break"
 
     def _select_scene_entity(self, widget: tk.Listbox, scene) -> None:
         selection = widget.curselection()
