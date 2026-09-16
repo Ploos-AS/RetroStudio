@@ -16,11 +16,13 @@ def selected_scene_entity(state, scene):
         return None
 
 
-def _mount_prefab_browser(shell, toolbar_parent, scene) -> None:
-    """Add creator templates with preview/configuration before placement."""
+def _mount_prefab_browser(shell, toolbar_parent, canvas, scene) -> None:
+    """Add creator templates with preview/configuration and pointer placement."""
     import tkinter as tk
     from tkinter import ttk
+
     from .prefab_browser import PrefabBrowser
+    from .prefab_placement import PrefabPlacementSession
 
     browser = PrefabBrowser()
     row = ttk.Frame(toolbar_parent)
@@ -28,6 +30,58 @@ def _mount_prefab_browser(shell, toolbar_parent, scene) -> None:
     ttk.Label(row, text="Templates:").pack(side="left")
     button = ttk.Menubutton(row, text="Add Template…")
     menu = tk.Menu(button, tearoff=False)
+    placement = {"session": None, "ghost": ()}
+
+    def clear_ghost() -> None:
+        for item in placement["ghost"]:
+            canvas.delete(item)
+        placement["ghost"] = ()
+
+    def cancel_placement(_event=None) -> None:
+        session = placement["session"]
+        if session is not None:
+            session.cancel()
+        placement["session"] = None
+        clear_ghost()
+        canvas.configure(cursor="")
+        shell.status.set("Template placement cancelled")
+
+    def preview_pointer(event) -> None:
+        session = placement["session"]
+        if session is None or not session.active:
+            return
+        clear_ghost()
+        left, top, right, bottom = session.bounds_at(event.x, event.y)
+        preview = session.preview
+        if preview.collision_shape == "circle":
+            shape = canvas.create_oval(left, top, right, bottom, width=2, dash=(4, 3))
+        else:
+            shape = canvas.create_rectangle(left, top, right, bottom, width=2, dash=(4, 3))
+        label = canvas.create_text(event.x, top - 8, text=browser.definition(session.prefab_id).name, anchor="s")
+        placement["ghost"] = (shape, label)
+
+    def commit_pointer(event):
+        session = placement["session"]
+        if session is None or not session.active:
+            return None
+        entity = session.place(scene, event.x, event.y)
+        placement["session"] = None
+        clear_ghost()
+        canvas.configure(cursor="")
+        shell.state.select("entity", entity.entity_id)
+        project = shell.state.project
+        if project.source_path:
+            from .model import save_project
+            save_project(project, project.source_path)
+            shell.status.set(f"Placed {entity.name} — project saved")
+        else:
+            shell.status.set(f"Placed {entity.name} — save project to persist")
+        shell.activate("scene")
+        return "break"
+
+    canvas.bind("<Motion>", preview_pointer, add="+")
+    canvas.bind("<Button-1>", commit_pointer, add="+")
+    canvas.bind("<Escape>", cancel_placement, add="+")
 
     def configure(prefab_id: str) -> None:
         definition = browser.definition(prefab_id)
@@ -75,28 +129,25 @@ def _mount_prefab_browser(shell, toolbar_parent, scene) -> None:
                 return float(text) if "." in text else int(text)
             return value
 
-        def place() -> None:
+        def arm_placement() -> None:
             try:
                 values = {key: convert(field, variable.get()) for key, (field, variable) in variables.items()}
             except ValueError:
                 shell.status.set("Template value must be a valid number")
                 return
-            offset = (len(scene.entities) % 8) * 24
-            entity = browser.place(scene, prefab_id, x=64 + offset, y=64 + offset, name=name_var.get(), values=values)
-            shell.state.select("entity", entity.entity_id)
-            project = shell.state.project
-            if project.source_path:
-                from .model import save_project
-                save_project(project, project.source_path)
-                shell.status.set(f"Added {entity.name} template — project saved")
-            else:
-                shell.status.set(f"Added {entity.name} template — save project to persist")
+            previous = placement["session"]
+            if previous is not None:
+                previous.cancel()
+            placement["session"] = PrefabPlacementSession(browser, prefab_id, name=name_var.get(), values=values)
+            clear_ghost()
+            canvas.configure(cursor="crosshair")
+            canvas.focus_set()
             dialog.destroy()
-            shell.activate("scene")
+            shell.status.set(f"Move over the scene and click to place {definition.name}; Esc cancels")
 
         actions = ttk.Frame(body)
         actions.pack(fill="x", pady=(8, 0))
-        ttk.Button(actions, text="Add to Scene", command=place).pack(side="right")
+        ttk.Button(actions, text="Place in Scene", command=arm_placement).pack(side="right")
         ttk.Button(actions, text="Cancel", command=dialog.destroy).pack(side="right", padx=(0, 6))
 
     for genre in browser.genres:
@@ -106,15 +157,16 @@ def _mount_prefab_browser(shell, toolbar_parent, scene) -> None:
         menu.add_cascade(label=genre.title(), menu=genre_menu)
     button.configure(menu=menu)
     button.pack(side="left", padx=(6, 0))
-    ttk.Label(row, text="Preview and tune reusable gameplay objects before placing them.").pack(side="left", padx=10)
+    ttk.Label(row, text="Configure a template, then place it exactly where you want it.").pack(side="left", padx=10)
 
 
 def mount_scene_collision(shell, toolbar_parent, canvas, scene):
     """Mount Scene Composer templates plus collision authoring."""
-    _mount_prefab_browser(shell, toolbar_parent, scene)
+    _mount_prefab_browser(shell, toolbar_parent, canvas, scene)
     entity = selected_scene_entity(shell.state, scene)
     if entity is None:
         return None
+
     from .scene_collision_mount import SceneCollisionMount
 
     def changed():
