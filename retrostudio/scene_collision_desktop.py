@@ -161,8 +161,10 @@ def _mount_prefab_browser(shell, toolbar_parent, canvas, scene) -> None:
 
 
 def mount_scene_collision(shell, toolbar_parent, canvas, scene):
-    """Mount Scene Composer templates plus collision authoring."""
+    """Mount Scene Composer templates, grid and collision authoring."""
     _mount_prefab_browser(shell, toolbar_parent, canvas, scene)
+    from .scene_grid_desktop import mount_scene_grid
+    mount_scene_grid(shell, toolbar_parent, canvas, scene, lambda: selected_scene_entity(shell.state, scene))
     entity = selected_scene_entity(shell.state, scene)
     if entity is None:
         return None
